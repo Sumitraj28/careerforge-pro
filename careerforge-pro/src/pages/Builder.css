@@ -1,0 +1,179 @@
+/* Builder.css — Exact JobChai Theme */
+
+/* ── Wrapper: full viewport below navbar ── */
+.builder-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding-top: 60px; /* Navbar height */
+}
+
+/* ── Header Bar ── */
+.builder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background: #fff;
+  border-bottom: 1px solid #e2e6f0;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.builder-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.builder-header__icon {
+  color: #5b6cf7;
+}
+
+.builder-header__title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #1a1e36;
+  letter-spacing: -0.2px;
+}
+
+/* ATS Badge in header */
+.builder-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 50px;
+  letter-spacing: 0.3px;
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+.builder-badge--green {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.builder-badge--yellow {
+  background: #fef9c3;
+  color: #ca8a04;
+}
+
+.builder-badge--red {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+.builder-header__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.builder-header__download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background: linear-gradient(135deg, #5b6cf7, #7b8cff);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 3px 12px rgba(91, 108, 247, 0.25);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.builder-header__download:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 20px rgba(91, 108, 247, 0.35);
+}
+
+.builder-header__download:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Main 2-Column Layout ── */
+.builder {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  min-height: 0; /* Allow children to scroll */
+}
+
+.builder__form {
+  overflow-y: auto;
+  border-right: 1px solid #e2e6f0;
+  background: #fff;
+}
+
+.builder__preview {
+  overflow-y: auto;
+  background: #4a9ff5;
+}
+
+.builder__form::-webkit-scrollbar,
+.builder__preview::-webkit-scrollbar { width: 6px; }
+.builder__form::-webkit-scrollbar-track,
+.builder__preview::-webkit-scrollbar-track { background: transparent; }
+.builder__form::-webkit-scrollbar-thumb { background: #d0d5e0; border-radius: 99px; }
+.builder__preview::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 99px; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .builder {
+    grid-template-columns: 1fr;
+  }
+
+  .builder__form {
+    border-right: none;
+    border-bottom: 1px solid #e2e6f0;
+    min-height: 60vh;
+  }
+
+  .builder__preview {
+    min-height: 80vh;
+  }
+
+  .builder-header__title {
+    font-size: 0.95rem;
+  }
+
+  .builder-header__download span {
+    display: none;
+  }
+}
+
+/* ── Print Styles ── */
+@media print {
+  .builder-wrapper {
+    display: block;
+    height: auto;
+    padding-top: 0;
+  }
+
+  .builder-header {
+    display: none;
+  }
+
+  .builder {
+    display: block;
+    height: auto;
+  }
+
+  .builder__form {
+    display: none;
+  }
+
+  .builder__preview {
+    overflow: visible;
+    background: #fff;
+  }
+}

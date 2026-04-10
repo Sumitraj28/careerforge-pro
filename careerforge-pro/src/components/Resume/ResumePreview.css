@@ -1,0 +1,226 @@
+/* ResumePreview.css — Exact JobChai Theme */
+
+.rp {
+  display: flex; flex-direction: column; height: 100%;
+  background: #4a9ff5;
+}
+
+/* Toolbar */
+.rp-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px;
+  background: #fff;
+  border-bottom: 1px solid #e2e6f0;
+  gap: 12px; flex-shrink: 0;
+}
+
+.rp-templates { display: flex; gap: 4px; flex-wrap: wrap; }
+
+.rp-template-btn {
+  padding: 5px 12px;
+  border: 1px solid #e2e6f0;
+  border-radius: var(--cf-radius-pill);
+  background: #fff;
+  font-size: 0.75rem; font-weight: 600;
+  color: #6b7194; cursor: pointer; transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+
+.rp-template-btn:hover { border-color: #5b6cf7; color: #5b6cf7; }
+.rp-template-btn--active { background: #5b6cf7; border-color: #5b6cf7; color: #fff; }
+.rp-template-btn--locked { opacity: 0.55; cursor: not-allowed; }
+.rp-template-btn--locked:hover { border-color: #e2e6f0; color: #6b7194; }
+
+.rp-download-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; background: #5b6cf7; color: #fff;
+  border: none; border-radius: var(--cf-radius-pill);
+  font-size: 0.78rem; font-weight: 700;
+  cursor: pointer; transition: background 0.2s; white-space: nowrap;
+}
+
+.rp-download-btn:hover { background: #4f5de6; }
+
+/* Paper */
+.rp-paper {
+  position: relative; flex: 1;
+  margin: 20px; padding: 40px 44px;
+  background: #fff; border-radius: 6px;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.12);
+  overflow-y: auto; min-height: 0;
+  font-size: 0.88rem; line-height: 1.55;
+  color: #1a1e36;
+}
+
+.rp-page-boundary { position: absolute; left: 20px; right: 20px; top: 1123px; border-top: 2px dashed rgba(255,255,255,0.3); pointer-events: none; }
+.rp-page-boundary::after { content: 'Page 1 end'; position: absolute; right: 0; top: 4px; font-size: 0.65rem; color: rgba(255,255,255,0.5); font-weight: 600; }
+
+.rp-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 400px; text-align: center; gap: 8px; }
+.rp-empty__title { font-size: 1.1rem; font-weight: 700; color: #6b7194; }
+.rp-empty__sub { font-size: 0.88rem; color: #9ca3bf; }
+
+.rp-name-block { margin-bottom: 4px; }
+.rp-name { font-size: 1.65rem; font-weight: 800; color: #0a1628; letter-spacing: -0.3px; line-height: 1.2; }
+.rp-jobtitle { font-size: 0.95rem; color: #5b6cf7; font-weight: 600; margin-top: 2px; }
+
+.rp-contact { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+.rp-contact__item { display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; color: #6b7194; }
+.rp-contact__item svg { color: #5b6cf7; }
+
+.rp-divider { border: none; border-top: 1.5px solid #e2e6f0; margin: 14px 0; }
+
+.rp-section { margin-bottom: 16px; }
+.rp-section__title { font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; color: #0a1628; padding-bottom: 4px; border-bottom: 2px solid #5b6cf7; margin-bottom: 10px; }
+.rp-section__body { font-size: 0.84rem; color: #3a4f6e; line-height: 1.65; }
+.rp-summary { white-space: pre-wrap; }
+
+.rp-item { margin-bottom: 12px; }
+.rp-item:last-child { margin-bottom: 0; }
+.rp-item__row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.rp-item__primary { font-size: 0.88rem; font-weight: 700; color: #1a1e36; }
+.rp-item__secondary { font-size: 0.84rem; color: #6b7194; font-weight: 500; }
+.rp-item__dates { font-size: 0.76rem; color: #6b7194; white-space: nowrap; flex-shrink: 0; }
+.rp-item__location { font-size: 0.78rem; color: #6b7194; margin-top: 1px; }
+.rp-item__desc { font-size: 0.82rem; color: #3a4f6e; margin-top: 4px; line-height: 1.6; }
+.rp-item__tech { font-size: 0.78rem; color: #6b7194; margin-top: 2px; }
+.rp-item__link { display: inline-flex; align-items: center; gap: 3px; font-size: 0.74rem; color: #5b6cf7; text-decoration: none; font-weight: 600; }
+.rp-item--inline { margin-bottom: 6px; }
+
+.rp-bullets { margin: 4px 0 0 16px; padding: 0; list-style: disc; }
+.rp-bullets li { font-size: 0.82rem; color: #3a4f6e; line-height: 1.6; margin-bottom: 2px; }
+
+.rp-skills { display: flex; flex-direction: column; gap: 8px; }
+.rp-skills__group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rp-skills__label { font-size: 0.78rem; font-weight: 700; color: #6b7194; margin-right: 4px; }
+.rp-chip { display: inline-block; padding: 2px 10px; background: rgba(91,108,247,0.08); border-radius: 50px; font-size: 0.76rem; font-weight: 600; color: #5b6cf7; }
+
+.rp-highlight { background: #dcfce7; color: inherit; padding: 0 2px; border-radius: 2px; }
+
+/* Template Variants */
+.rp-paper--modern .rp-name { color: #5b6cf7; }
+.rp-paper--modern .rp-section__title { color: #5b6cf7; border-bottom-color: #5b6cf7; }
+.rp-paper--modern .rp-jobtitle { color: #6b7194; font-style: italic; }
+
+.rp-paper--minimal .rp-name { font-weight: 600; font-size: 1.5rem; letter-spacing: 2px; text-transform: uppercase; }
+.rp-paper--minimal .rp-section__title { border-bottom: 1px solid #ccc; font-size: 0.74rem; letter-spacing: 2px; color: #6b7194; }
+.rp-paper--minimal .rp-divider { border-top: 1px solid #eee; }
+.rp-paper--minimal .rp-jobtitle { color: #6b7194; font-weight: 500; }
+.rp-paper--minimal .rp-chip { background: transparent; border: 1px solid #e2e6f0; color: #6b7194; }
+
+.rp-paper--executive { border-top: 8px solid #1a1e36; font-family: 'Georgia', serif; }
+.rp-paper--executive .rp-name { font-family: 'Inter', sans-serif; color: #1a1e36; }
+.rp-paper--executive .rp-section__title { color: #1a1e36; border-bottom: 2px solid #1a1e36; font-family: 'Inter', sans-serif; }
+.rp-paper--executive .rp-chip { background: #f5f7fb; color: #334155; border: 1px solid #e2e6f0; }
+
+.rp-paper--creative { background: linear-gradient(135deg, #fff 0%, #fafafa 100%); border-left: 12px solid #ec4899; }
+.rp-paper--creative .rp-name { color: #ec4899; font-size: 2rem; letter-spacing: -1px; }
+.rp-paper--creative .rp-section__title { color: #ec4899; border-bottom: 2px dashed #fbcfe8; }
+.rp-paper--creative .rp-chip { background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8; }
+
+@media print {
+  .rp-toolbar { display: none; }
+  .rp-paper { margin: 0; border-radius: 0; box-shadow: none; padding: 20px 24px; }
+  .rp-page-boundary { display: none; }
+}
+
+@media (max-width: 640px) {
+  .rp-paper { margin: 12px; padding: 24px 20px; }
+  .rp-templates { display: none; }
+}
+
+/* Pro template lock styles */
+.rp-template-btn--locked {
+  opacity: 0.65;
+  cursor: not-allowed !important;
+  position: relative;
+}
+.rp-template-btn--locked:hover {
+  background: #f3f4f8;
+  border-color: #e2e6f0;
+}
+
+/* Upgrade Modal */
+.rp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(10, 15, 44, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.rp-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+.rp-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7194;
+  padding: 4px;
+  border-radius: 6px;
+}
+.rp-modal__close:hover { background: #f3f4f8; color: #0a0f2c; }
+
+.rp-modal__icon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin: 0 auto 16px;
+}
+
+.rp-modal__title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0a0f2c;
+  margin-bottom: 8px;
+}
+
+.rp-modal__desc {
+  font-size: 0.88rem;
+  color: #6b7194;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.rp-modal__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.rp-modal__btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(245,158,11,0.35);
+}

@@ -1,0 +1,16 @@
+{
+  "name": "careerforge-pro-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CareerForge Pro — Full Stack Resume Builder",
+  "scripts": {
+    "start": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"cyan,magenta\" \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:frontend": "cd careerforge-pro && npm start",
+    "start:backend": "cd careerforge-backend && npm run dev",
+    "install:all": "cd careerforge-backend && npm install && cd ../careerforge-pro && npm install",
+    "build": "cd careerforge-pro && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

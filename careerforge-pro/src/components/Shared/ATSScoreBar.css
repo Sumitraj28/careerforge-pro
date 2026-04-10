@@ -1,0 +1,45 @@
+/* ATSScoreBar.css — Exact JobChai Theme */
+
+.ats-bar {
+  width: 100%;
+  padding: 20px 24px;
+  background: #fff;
+  border: 1px solid #e2e6f0;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+
+.ats-bar__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.ats-bar__label { font-size: 0.78rem; font-weight: 600; color: #6b7194; text-transform: uppercase; letter-spacing: 0.8px; }
+.ats-bar__result { display: flex; align-items: center; gap: 10px; }
+.ats-bar__number { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; line-height: 1; }
+.ats-bar__number--excellent { color: #22c55e; }
+.ats-bar__number--good { color: #eab308; }
+.ats-bar__number--needs-work { color: #ef4444; }
+
+.ats-bar__badge { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 10px; border-radius: 50px; }
+.ats-bar__badge--excellent { color: #22c55e; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.2); }
+.ats-bar__badge--good { color: #eab308; background: rgba(234,179,8,0.12); border: 1px solid rgba(234,179,8,0.2); }
+.ats-bar__badge--needs-work { color: #ef4444; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.2); }
+
+.ats-bar__track { position: relative; width: 100%; height: 10px; background: #e8ecf4; border-radius: 99px; overflow: hidden; }
+
+.ats-bar__fill { position: relative; height: 100%; border-radius: 99px; width: 0; transition: width 1.2s cubic-bezier(0.25,0.46,0.45,0.94); }
+.ats-bar__fill--excellent { background: linear-gradient(90deg, #22c55e, #4ade80); box-shadow: 0 0 16px rgba(34,197,94,0.4); }
+.ats-bar__fill--good { background: linear-gradient(90deg, #eab308, #facc15); box-shadow: 0 0 16px rgba(234,179,8,0.4); }
+.ats-bar__fill--needs-work { background: linear-gradient(90deg, #ef4444, #f87171); box-shadow: 0 0 16px rgba(239,68,68,0.4); }
+
+.ats-bar__fill-glow {
+  position: absolute; top: 0; left: -60%;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: bar-shimmer 2s ease-in-out infinite;
+  animation-delay: 1.3s;
+}
+
+@keyframes bar-shimmer { 0% { left: -60%; } 100% { left: 160%; } }
+
+.ats-bar__tick { position: absolute; top: 0; width: 1px; height: 100%; background: rgba(0,0,0,0.06); pointer-events: none; }
+
+.ats-bar__scale { display: flex; justify-content: space-between; margin-top: 6px; padding: 0 2px; }
+.ats-bar__scale span { font-size: 0.65rem; font-weight: 500; color: #9ca3bf; font-variant-numeric: tabular-nums; }

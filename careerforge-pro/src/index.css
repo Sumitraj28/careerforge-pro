@@ -1,0 +1,64 @@
+/* ───────────────────────────────────────────────
+   index.css — CareerForge Global Design System
+   JobChai Exact Theme — Vivid Blue Background
+   ─────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --cf-primary: #1e3a5f;
+  --cf-primary-light: #2b4a73;
+  --cf-accent: #5b6cf7;
+  --cf-accent-hover: #4f5de6;
+  --cf-accent-light: #7b8cff;
+  --cf-accent-glow: rgba(91, 108, 247, 0.25);
+  --cf-accent-bg: rgba(91, 108, 247, 0.08);
+  --cf-bg: #4a9ff5;
+  --cf-bg-light: #f2f0fa;
+  --cf-surface: #ffffff;
+  --cf-surface-alt: #f5f7fb;
+  --cf-surface-card: #ffffff;
+  --cf-text: #1a1e36;
+  --cf-text-secondary: #334155;
+  --cf-text-muted: #6b7194;
+  --cf-text-light: #9ca3bf;
+  --cf-border: rgba(91, 108, 247, 0.08);
+  --cf-border-solid: #e2e6f0;
+  --cf-border-hover: #c8cde0;
+  --cf-success: #22c55e;
+  --cf-warning: #f59e0b;
+  --cf-error: #ef4444;
+  --cf-gold: #f59e0b;
+  --cf-gold-bg: rgba(245, 158, 11, 0.15);
+  --cf-gold-text: #b45309;
+  --cf-radius: 14px;
+  --cf-radius-sm: 10px;
+  --cf-radius-lg: 18px;
+  --cf-radius-xl: 24px;
+  --cf-radius-pill: 50px;
+  --cf-font-heading: 'Inter', system-ui, -apple-system, sans-serif;
+  --cf-font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --cf-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --cf-transition-fast: 0.18s ease;
+  --cf-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --cf-shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
+  --cf-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --cf-shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.1);
+  --cf-shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.12);
+  --cf-shadow-accent: 0 4px 20px rgba(91, 108, 247, 0.25);
+  --cf-shadow-card: 0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.06);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body { margin: 0; font-family: var(--cf-font-body); font-size: 16px; line-height: 1.6; color: var(--cf-text); background: var(--cf-bg); }
+h1, h2, h3, h4, h5, h6 { font-family: var(--cf-font-heading); line-height: 1.2; }
+a { color: inherit; text-decoration: none; }
+button { font-family: var(--cf-font-body); }
+img { max-width: 100%; display: block; }
+code { font-family: 'Fira Code', source-code-pro, Menlo, Monaco, Consolas, monospace; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+::selection { background: rgba(91, 108, 247, 0.2); color: var(--cf-text); }
