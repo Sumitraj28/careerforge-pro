@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Menu, X, LogOut, ChevronDown, FileText, Layout, BookOpen, Briefcase, Sparkles } from 'lucide-react';
+import { Menu, X, LogOut, ChevronDown, Layout, BookOpen, Briefcase, Sparkles } from 'lucide-react';
 import './Navbar.css';
 
 export default function Navbar() {

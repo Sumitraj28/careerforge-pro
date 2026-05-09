@@ -12,9 +12,6 @@ import Navbar from '../components/Shared/Navbar';
 import { getPaymentStatus } from '../utils/api';
 import './Dashboard.css';
 
-/* ── Initial states ── */
-const INITIAL_RESUMES = [];
-
 /* ════════════════════════════════════════════════════
    DASHBOARD
    ════════════════════════════════════════════════════ */
@@ -32,7 +29,7 @@ export default function Dashboard() {
   const [resumes, setResumes] = useState([]);
   const [coverLetters, setCoverLettersList] = useState([]);
   const [activeTab, setActiveTab] = useState('resumes');
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [deleteModal, setDeleteModal] = useState({ open: false, resume: null });
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -178,7 +175,7 @@ export default function Dashboard() {
 
   const handleDownload = async (resume) => {
     try {
-      const { getAllResumes, generatePDF } = await import('../utils/api');
+      const { getAllResumes } = await import('../utils/api');
       const res = await getAllResumes();
       const fullResume = res.data.find(r => r._id === resume.id);
       if(fullResume) {
