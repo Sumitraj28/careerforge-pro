@@ -7,8 +7,6 @@ const PORT = process.env.PORT || 5001
 
 const app = express()
 
-connectDB()
-
 app.use(cors({ origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL : '*' }))
 
 // Stripe webhook requires the raw body
@@ -27,8 +25,10 @@ app.get('/', (req, res) => {
   res.json({ status: 'CareerForge API Running' })
 })
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`)
+connectDB().then(() => {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`)
+  })
 })
 
 module.exports = app
