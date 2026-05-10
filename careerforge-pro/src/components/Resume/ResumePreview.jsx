@@ -26,6 +26,11 @@ const safeText = (val) => {
   return String(val);
 };
 
+const safeJobTitle = (value) => {
+  const title = safeText(value).trim();
+  return /^(skills?|education|experience|projects?|certifications?|summary|achievements?)$/i.test(title.replace(/\s+/g, '')) ? '' : title;
+};
+
 /* ── Bullet helper: handles string OR array ── */
 const toBullets = (desc) => {
   if (!desc) return [];
@@ -127,7 +132,9 @@ export default function ResumePreview() {
           .rp-skills__group{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
           .rp-chip{display:inline-block;padding:2px 8px;background:rgba(47,74,52,0.09);
                    border-radius:50px;font-size:10px;font-weight:600;color:#2f4a34}
-          .rp-section{margin-bottom:14px;page-break-inside:avoid}
+          .rp-chip--more{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}
+          .rp-section{margin-bottom:14px;page-break-inside:avoid;max-height:none;overflow:visible}
+          .rp-section--overflow{border:1px solid #f59e0b;border-radius:6px;padding:8px}
           .rp-divider{border:none;border-top:1px solid #e5e1d8;margin:8px 0 12px}
           .rp-summary{font-size:10.5px;color:#4f493f;line-height:1.65}
           .rp-item__tech{font-size:10px;color:#888;margin-top:2px}
@@ -163,6 +170,32 @@ export default function ResumePreview() {
   const hasSkills = (skills?.technical?.length > 0) || (skills?.soft?.length > 0) || (skills?.tools?.length > 0);
   const hasProj = projects?.some((p) => safeText(p.name) || safeText(p.description));
   const hasCerts = certifications?.some((c) => safeText(c.name) || safeText(c.issuer));
+  const displayJobTitle = safeJobTitle(personalInfo?.jobTitle);
+  const capSkills = (items = []) => {
+    const visible = items.slice(0, 20);
+    return { visible, hiddenCount: Math.max(items.length - visible.length, 0) };
+  };
+  const technicalSkills = skills?.technical || [];
+  const softSkills = skills?.soft || [];
+  const toolSkills = skills?.tools || [];
+  const displayedTechnicalSkills = capSkills(technicalSkills).visible;
+  const displayedSoftSkills = capSkills(softSkills).visible;
+  const displayedToolSkills = capSkills(toolSkills).visible;
+  const hiddenTechnicalSkillCount = Math.max(technicalSkills.length - displayedTechnicalSkills.length, 0);
+  const hiddenSoftSkillCount = Math.max(softSkills.length - displayedSoftSkills.length, 0);
+  const hiddenToolSkillCount = Math.max(toolSkills.length - displayedToolSkills.length, 0);
+  const totalSkillCount = (skills?.technical?.length || 0) + (skills?.soft?.length || 0) + (skills?.tools?.length || 0);
+  const hasSkillOverflow = technicalSkills.length > 20 || softSkills.length > 20 || toolSkills.length > 20;
+  const dataHealth = totalSkillCount >= 30
+    ? 'red'
+    : [hasName, hasContact, hasSummary, hasExp, hasEdu, hasSkills, hasProj, hasCerts].every(Boolean)
+      ? 'green'
+      : 'yellow';
+  const dataHealthTooltip = dataHealth === 'red'
+    ? 'Skills section may contain misclassified data. Try re-importing or manually editing.'
+    : dataHealth === 'green'
+      ? 'All resume sections have data.'
+      : 'Some resume sections are missing data.';
   
   // A resume is empty only if it literally has NO content in any primary section
   const isEmpty = !hasName && !hasContact && !hasSummary && !hasExp && !hasEdu && !hasSkills && !hasProj && !hasCerts;
@@ -190,6 +223,11 @@ export default function ResumePreview() {
             </button>
           ))}
         </div>
+        <span
+          className={`rp-data-health rp-data-health--${dataHealth}`}
+          title={dataHealthTooltip}
+          aria-label={dataHealthTooltip}
+        />
         <button
           className="rp-download-btn"
           onClick={handleDownload}
@@ -219,8 +257,8 @@ export default function ResumePreview() {
                   {safeText(personalInfo.firstName)}{personalInfo.firstName && personalInfo.lastName ? ' ' : ''}{safeText(personalInfo.lastName)}
                 </h1>
               )}
-              {personalInfo.jobTitle && (
-                <p className="rp-jobtitle">{safeText(personalInfo.jobTitle)}</p>
+              {displayJobTitle && (
+                <p className="rp-jobtitle">{displayJobTitle}</p>
               )}
               <div className="rp-contact">
                 {personalInfo.email && (
@@ -318,35 +356,44 @@ export default function ResumePreview() {
 
             {/* 5 — Skills */}
             {hasSkills && (
-              <div className="rp-section">
+              <div className={`rp-section ${hasSkillOverflow ? 'rp-section--overflow' : ''}`}>
                 <h2 className="rp-section__title">Skills</h2>
-                {skills.technical?.length > 0 && (
+                {technicalSkills.length > 0 && (
                   <div className="rp-skills__row">
                     <span className="rp-skills__category">Technical</span>
                     <div className="rp-skills__group">
-                      {skills.technical.map((skill, i) => (
+                      {displayedTechnicalSkills.map((skill, i) => (
                         <span key={i} className="rp-chip">{highlightText(safeText(skill))}</span>
                       ))}
+                      {hiddenTechnicalSkillCount > 0 && (
+                        <span className="rp-chip rp-chip--more">+{hiddenTechnicalSkillCount} more</span>
+                      )}
                     </div>
                   </div>
                 )}
-                {skills.soft?.length > 0 && (
+                {softSkills.length > 0 && (
                   <div className="rp-skills__row">
                     <span className="rp-skills__category">Soft Skills</span>
                     <div className="rp-skills__group">
-                      {skills.soft.map((skill, i) => (
+                      {displayedSoftSkills.map((skill, i) => (
                         <span key={i} className="rp-chip rp-chip--soft">{highlightText(safeText(skill))}</span>
                       ))}
+                      {hiddenSoftSkillCount > 0 && (
+                        <span className="rp-chip rp-chip--more">+{hiddenSoftSkillCount} more</span>
+                      )}
                     </div>
                   </div>
                 )}
-                {skills.tools?.length > 0 && (
+                {toolSkills.length > 0 && (
                   <div className="rp-skills__row">
                     <span className="rp-skills__category">Tools</span>
                     <div className="rp-skills__group">
-                      {skills.tools.map((skill, i) => (
+                      {displayedToolSkills.map((skill, i) => (
                         <span key={i} className="rp-chip rp-chip--tools">{highlightText(safeText(skill))}</span>
                       ))}
+                      {hiddenToolSkillCount > 0 && (
+                        <span className="rp-chip rp-chip--more">+{hiddenToolSkillCount} more</span>
+                      )}
                     </div>
                   </div>
                 )}

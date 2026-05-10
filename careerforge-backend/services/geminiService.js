@@ -110,8 +110,8 @@ ${jobDescription}`;
 async function rewriteResume(resumeData, keywords, jobDescription) {
   const mergedKeywords = [
     ...(keywords.top_keywords || []),
-    ...(keywords.hard_skills  || []),
-    ...(keywords.soft_skills  || []),
+    ...(keywords.hard_skills || []),
+    ...(keywords.soft_skills || []),
   ].slice(0, 20);
 
   const prompt = `You are an expert resume writer.
@@ -171,7 +171,7 @@ Return the complete updated resume JSON:`;
 async function generateCoverLetter(resumeData, jobDescription, keywords) {
   const mergedKeywords = [...(keywords.top_keywords || []), ...(keywords.hard_skills || []), ...(keywords.soft_skills || [])];
 
-  const experienceBullets = (resumeData.experience || []).map(exp => 
+  const experienceBullets = (resumeData.experience || []).map(exp =>
     `${exp.position} at ${exp.company}:\n${exp.description}`
   ).join('\n\n');
 
@@ -239,58 +239,68 @@ CRITICAL RULES:
 4. If the person's name is a single string, split it into "firstName" and "lastName".
 5. For skills, categorize them into technical (hard skills), soft (interpersonal), and tools (software/platforms).
 
+CRITICAL RULES FOR CATEGORIZATION:
+- skills.technical: ONLY programming languages, frameworks, libraries, technical concepts (e.g. "React", "Python", "Machine Learning", "REST APIs")
+- skills.soft: ONLY interpersonal skills (e.g. "Communication", "Leadership", "Problem-Solving", "Team collaboration")
+- skills.tools: ONLY software tools, platforms, cloud services (e.g. "Git", "AWS", "Docker", "Figma", "MySQL")
+- NEVER put education institution names, school names, degree names, percentages, GPA scores, location names, or certification titles into skills
+- certifications: Include ALL certificates, achievements, awards, badges, LeetCode ratings, contest ratings, bootcamp completions, online course completions — anything the person earned
+- education: Put ALL schooling here — universities, intermediate school, matriculation, 10th/12th grade results with their percentages
+- experience: Put internships here too, not just full-time jobs
+- For any "ACHIEVEMENTS" section in the resume, map individual items to certifications array (name = achievement title, date = year if present)
+
 Required JSON Structure:
 {
   "personalInfo": {
-    "firstName": "",
-    "lastName": "",
-    "jobTitle": "",
-    "email": "",
-    "phone": "",
-    "location": "",
-    "linkedin": "",
-    "github": "",
-    "summary": ""
+    "firstName": "given name only, e.g. Ravi",
+    "lastName": "family/rest of name, e.g. Kumar",
+    "jobTitle": "current target/title if present, e.g. Full Stack Developer",
+    "email": "email address",
+    "phone": "phone number",
+    "location": "city/state/country only, e.g. Patna, Bihar, India",
+    "linkedin": "LinkedIn URL or handle",
+    "github": "GitHub URL or handle",
+    "summary": "professional summary/objective text"
   },
   "experience": [
     {
-      "company": "",
-      "position": "",
-      "startDate": "",
-      "endDate": "",
+      "company": "employer or internship organization, e.g. Acme Labs",
+      "position": "job or internship title, e.g. Software Developer Intern",
+      "startDate": "start month/year or year, e.g. Jan 2024",
+      "endDate": "end month/year, year, Present, or empty",
       "current": false,
-      "location": "",
-      "description": ""
+      "location": "work location if present",
+      "description": "role bullets separated by \\n"
     }
   ],
   "education": [
     {
-      "institution": "",
-      "degree": "",
-      "fieldOfStudy": "",
-      "startDate": "",
-      "endDate": "",
-      "gpa": ""
+      "institution": "school/college/university name, e.g. New Patiala Central School Patna",
+      "degree": "degree/class level, e.g. B.Tech, Intermediate, Matriculation, 10th, 12th",
+      "fieldOfStudy": "major/stream if present, e.g. Computer Science, Science",
+      "startDate": "start year if present",
+      "endDate": "end year if present",
+      "gpa": "CGPA/GPA/percentage/grade, e.g. CGPA: 7.8 or 82%"
     }
   ],
   "skills": {
-    "technical": [],
-    "soft": [],
-    "tools": []
+    "technical": ["React", "Python", "Machine Learning", "REST APIs"],
+    "soft": ["Communication", "Leadership", "Problem-Solving"],
+    "tools": ["Git", "AWS", "Docker", "Figma", "MySQL"]
   },
   "projects": [
     {
-      "name": "",
-      "description": "",
-      "techStack": "",
-      "link": ""
+      "name": "project title only, e.g. Vendor Dashboard",
+      "description": "project bullets/features separated by \\n",
+      "techStack": "technologies used, e.g. React, Node.js, MongoDB",
+      "link": "project URL/GitHub link"
     }
   ],
   "certifications": [
     {
-      "name": "",
-      "issuer": "",
-      "date": ""
+      "name": "certificate, award, badge, achievement, rating, bootcamp, or course completion title",
+      "issuer": "issuing organization/platform if present, e.g. Coursera, LeetCode, Google",
+      "date": "year/date if present"
     }
   ]
 }
@@ -301,18 +311,18 @@ ${pdfText}`;
   try {
     const result = await getModel().generateContent(prompt);
     const text = result.response.text();
-    
+
     // Robust JSON extraction
     let jsonStr = text;
     // Remove markdown code fences if present
     jsonStr = jsonStr.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-    
+
     const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error('Gemini parseResume - No JSON object found in text:', text.substring(0, 500));
       throw new Error('AI did not return valid JSON');
     }
-    
+
     jsonStr = jsonMatch[0];
     const parsed = JSON.parse(jsonStr);
     return cleanMarkdownFromObject(parsed);
@@ -320,11 +330,12 @@ ${pdfText}`;
     console.error('parseResume Error:', error.message);
     // Safe fallback so the UI doesn't crash with 500
     return {
-      personalInfo: { firstName: '', lastName: '', jobTitle: '', email: '', phone: '', location: '', summary: '' },
+      personalInfo: { firstName: '', lastName: '', jobTitle: '', email: '', phone: '', location: '', linkedin: '', github: '', summary: '' },
       experience: [],
       education: [],
       skills: { technical: [], soft: [], tools: [] },
-      projects: []
+      projects: [],
+      certifications: []
     };
   }
 }

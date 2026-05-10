@@ -23,6 +23,7 @@ import {
   updateCertification,
   removeCertification,
   loadResume,
+  resetResume,
 } from '../../redux/resumeSlice';
 import ATSScoreBar from '../Shared/ATSScoreBar';
 import KeywordChip from '../Shared/KeywordChip';
@@ -45,13 +46,13 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { 
-  extractKeywords, 
-  rewriteResume, 
-  getATSScore, 
-  uploadResume, 
+import {
+  extractKeywords,
+  rewriteResume,
+  getATSScore,
+  uploadResume,
   saveResume,
-  updateResume 
+  updateResume
 } from '../../utils/api';
 import './ResumeForm.css';
 
@@ -397,30 +398,94 @@ const cleanResumeLineV2 = (line = '') =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const collapsedSectionHeaderV2 = (line = '') =>
+  cleanResumeLineV2(line)
+    .replace(/:$/, '')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+
+const sectionFromCollapsedHeaderV2 = (collapsed = '') => {
+  if (/^(professionalsummary|summary|profile|objective|aboutme)$/.test(collapsed)) return 'summary';
+  if (/^(workexperience|experience|employment|internship|internships|professionalexperience|workhistory)$/.test(collapsed)) return 'experience';
+  if (/^(education|academic|qualification|qualifications|educationalbackground)$/.test(collapsed)) return 'education';
+  if (/^(skill|skills|technicalskills|corecompetencies|technologies|language|languages|programmingskills)$/.test(collapsed)) return 'skills';
+  if (/^(project|projects|portfolio|personalprojects|keyprojects)$/.test(collapsed)) return 'projects';
+  if (/^(certification|certifications|certificate|certificates|credential|credentials|license|licenses|achievement|achievements|award|awards)$/.test(collapsed)) return 'certifications';
+  return null;
+};
+
 const sectionFromHeaderV2 = (line = '') => {
-  const cleaned = cleanResumeLineV2(line).replace(/:$/, '');
-  if (cleaned.length > 46) return null;
+  const cleaned = cleanResumeLineV2(line).replace(/:$/, '').trim();
+  if (cleaned.length > 60) return null;
+  const collapsed = cleaned.replace(/\s+/g, '').toLowerCase();
+  if (/^skills?|technicalskills?$/.test(collapsed)) return 'skills';
+  if (/^(work)?experience|employment|internship?$/.test(collapsed)) return 'experience';
+  if (/^education|academic|qualifications?$/.test(collapsed)) return 'education';
+  if (/^projects?|portfolio$/.test(collapsed)) return 'projects';
+  if (/^certifications?|certificates?|achievements?|credentials?$/.test(collapsed)) return 'certifications';
+  if (/^(professional)?summary|profile|objective$/.test(collapsed)) return 'summary';
+  const collapsedSection = sectionFromCollapsedHeaderV2(collapsed);
+  if (collapsedSection) return collapsedSection;
   if (/^(professional\s+)?summary|profile|objective|about\s+me$/i.test(cleaned)) return 'summary';
-  if (/^(work\s+)?experience|employment|internships?|professional\s+experience$/i.test(cleaned)) return 'experience';
-  if (/^education|academic|qualifications?$/i.test(cleaned)) return 'education';
-  if (/^skills?|technical\s+skills?|core\s+competencies|technologies|languages$/i.test(cleaned)) return 'skills';
-  if (/^projects?|portfolio$/i.test(cleaned)) return 'projects';
-  if (/^certifications?|certificates?|credentials?|licenses?|achievements$/i.test(cleaned)) return 'certifications';
+  if (/^(work\s+)?experience|employment|internships?|professional\s+experience|work\s+history$/i.test(cleaned)) return 'experience';
+  if (/^education|academic|qualifications?|educational\s+background$/i.test(cleaned)) return 'education';
+  if (/^(technical\s+)?skills?|core\s+competencies|technologies|languages?|programming\s+skills?$/i.test(cleaned)) return 'skills';
+  if (/^projects?|portfolio|personal\s+projects?|key\s+projects?$/i.test(cleaned)) return 'projects';
+  if (/^certifications?|certificates?|credentials?|licenses?|achievements?|awards?$/i.test(cleaned)) return 'certifications';
   return null;
 };
 
 const inlineSectionV2 = (line = '') => {
-  const match = cleanResumeLineV2(line).match(/^(professional\s+summary|summary|profile|objective|work\s+experience|experience|employment|education|academic|skills|technical\s+skills|projects|certifications|certificates|achievements|languages)\s*[:|-]\s*(.+)$/i);
+  const cleaned = cleanResumeLineV2(line);
+  const brokenMatch = cleaned.match(/^([A-Z](?:\s+[A-Z]+)+)\s*[:|-]\s*(.+)$/);
+  if (brokenMatch) {
+    const section = sectionFromHeaderV2(brokenMatch[1]);
+    if (section) return { section, rest: brokenMatch[2].trim() };
+  }
+  const match = cleaned.match(/^(professional\s+summary|summary|profile|objective|work\s+experience|experience|employment|education|academic|skills|technical\s+skills|projects|certifications|certificates|achievements|languages)\s*[:|-]\s*(.+)$/i);
   if (!match) return null;
   return { section: sectionFromHeaderV2(match[1]) || 'skills', rest: match[2].trim() };
 };
 
-const splitSkillItemsV2 = (value = '') =>
-  cleanResumeLineV2(value)
-    .replace(/^(technical\s+skills?|skills?|tools|technologies|programming\s+languages?|languages|soft\s+skills?)\s*[:|-]?\s*/i, '')
-    .split(/[,;|]/)
-    .map((item) => item.trim())
-    .filter((item) => item && item.length > 1 && item.length < 45);
+const isInvalidSkillItemV2 = (value = '') => {
+  const item = cleanResumeLineV2(value);
+  if (!item || item.length > 50) return true;
+  const collapsed = item.replace(/\s+/g, '').toLowerCase();
+  if (sectionFromCollapsedHeaderV2(collapsed)) return true;
+  if (/^[-\u2013\u2014]\s*[A-Z]/.test(item)) return true;
+  if (/\d{4}/.test(item) && /percent|%|cgpa|gpa/i.test(item)) return true;
+  if (/\b(19|20)\d{2}\b/.test(item)) return true;
+  if (/\bpercentage|percent\b/i.test(item) || /%\s*\d|\d\s*%/.test(item)) return true;
+  if (/\b(cgpa|gpa|grade)\b/i.test(item)) return true;
+  if (/\b(university|school|college|institute|polytechnic)\b/i.test(item)) return true;
+  if (/\b(bachelor|master|b\.?\s*tech|b\.?\s*sc|matriculation|intermediate|10th|12th)\b/i.test(item)) return true;
+  if (/\b(india|bihar|punjab|delhi|maharashtra|karnataka|tamil\s+nadu|telangana|uttar\s+pradesh|west\s+bengal|rajasthan|gujarat|kerala|haryana|odisha|jharkhand|madhya\s+pradesh|andhra\s+pradesh|assam|chhattisgarh|uttarakhand|goa|usa|united\s+states|uk|united\s+kingdom|canada|australia|germany|france|singapore|uae)\b/i.test(item)) return true;
+  if (/\b(earned|achieved|gained|awarded)\b/i.test(item)) return true;
+
+  const words = item.split(/\s+/).filter(Boolean);
+  if (words.length > 5) return true;
+  if (/\b(using|with|for|by)\b/i.test(item) && words.length > 2) return true;
+  if (/\b(and|of)\b/i.test(item) && words.length > 3) return true;
+  return false;
+};
+
+const splitSkillItemsV2 = (value = '') => {
+  const cleaned = cleanResumeLineV2(value)
+    .replace(/^(technical\s+skills?|skills?|tools|technologies|programming\s+languages?|languages|soft\s+skills?)\s*[:|-]?\s*/i, '');
+  // Try comma/semicolon/pipe split first
+  const commaSplit = cleaned.split(/[,;|]/).map(s => s.trim()).filter(s => s && s.length > 1 && !isInvalidSkillItemV2(s));
+  if (commaSplit.length > 1) return commaSplit;
+  // Single item that is a valid skill (no spaces or a known tech term)
+  if (cleaned.length > 1 && !isInvalidSkillItemV2(cleaned)) return [cleaned];
+  return [];
+};
+
+const normalizeBrokenSectionHeadersV2 = (lines = []) =>
+  lines.map((line) => {
+    if (!/^[A-Z]\s+[A-Z]{2,}/.test(line)) return line;
+    const section = sectionFromHeaderV2(line);
+    return section ? line.replace(/\s+/g, '') : line;
+  });
 
 const extractDateRangeV2 = (line = '') => {
   const match = cleanResumeLineV2(line).match(/(((jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+)?(19|20)\d{2})\s*(?:-|to|\u2013|\u2014)\s*(((jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+)?(19|20)\d{2}|present|current)/i);
@@ -433,8 +498,11 @@ const extractDateRangeV2 = (line = '') => {
   };
 };
 
+const extractSingleDateV2 = (line = '') =>
+  cleanResumeLineV2(line).match(/\b(?:since\s+)?((jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+(19|20)\d{2}|(19|20)\d{2})\b/i)?.[1] || '';
+
 function parseResumeTextV2(text) {
-  const lines = text.split('\n').map(cleanResumeLineV2).filter(Boolean);
+  const lines = normalizeBrokenSectionHeadersV2(text.split('\n').map(cleanResumeLineV2).filter(Boolean));
   const result = {
     personalInfo: {
       firstName: '', lastName: '', jobTitle: '', email: '',
@@ -523,10 +591,18 @@ function parseResumeTextV2(text) {
       };
       return;
     }
+    const singleDate = extractSingleDateV2(line);
     if (!currentExperience) {
       currentExperience = { company: '', position: '', location: '', startDate: '', endDate: '', current: false, description: '' };
     }
-    if (!currentExperience.company && line.length < 90 && !line.startsWith('-')) {
+    if (singleDate && /since|present|current/i.test(line)) {
+      currentExperience.startDate = currentExperience.startDate || singleDate;
+      currentExperience.current = true;
+      const withoutDate = line.replace(/\b(?:since\s+)?((jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+(19|20)\d{2}|(19|20)\d{2})\b/i, '').replace(/^[-|,:]+|[-|,:]+$/g, '').trim();
+      if (withoutDate) handleExperienceLine(withoutDate);
+    } else if (!currentExperience.position && /(intern|internship|trainee)/i.test(line) && line.length < 100 && !line.startsWith('-')) {
+      currentExperience.position = line;
+    } else if (!currentExperience.company && line.length < 90 && !line.startsWith('-')) {
       currentExperience.company = line;
     } else if (!currentExperience.position && line.length < 90 && !line.startsWith('-')) {
       currentExperience.position = line;
@@ -537,16 +613,48 @@ function parseResumeTextV2(text) {
 
   const handleEducationLine = (line) => {
     const years = [...line.matchAll(/\b(19|20)\d{2}\b/g)].map((match) => match[0]);
-    if (!currentEducation || years.length) {
+    const gpaMatch = line.match(/\b(?:cgpa|gpa)[:\s]+([\d.]+)/i);
+    const percentageMatch = line.match(/\b(?:percentage|percent)[:\s]+([\d.]+%?)/i) || line.match(/([\d.]+)\s*%/);
+    const scoreText = gpaMatch
+      ? `CGPA: ${gpaMatch[1]}`
+      : percentageMatch
+        ? `Percentage: ${percentageMatch[1].includes('%') ? percentageMatch[1] : `${percentageMatch[1]}%`}`
+        : '';
+    const withoutYears = line
+      .replace(/\b(19|20)\d{2}\b/g, '')
+      .replace(/\b(?:since\s+)?(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s*/ig, '')
+      .replace(/\b(?:cgpa|gpa)[:\s]+[\d.]+/ig, '')
+      .replace(/\b(?:percentage|percent)[:\s]+[\d.]+%?/ig, '')
+      .replace(/[\d.]+\s*%/g, '')
+      .replace(/[-|,:]+$/g, '')
+      .trim();
+    const isInstitutionLine = /\b(university|college|school|institute|polytechnic)\b/i.test(line);
+    const isDegreeLine = /\b(bachelor|master|b\.?\s*tech|b\.?\s*sc|m\.?\s*tech|phd|matriculation|intermediate|10th|12th|technology)\b/i.test(line);
+
+    // Start a new education entry only if we have no current one, or if line has both years (new institution)
+    if (!currentEducation) {
+      currentEducation = { institution: '', degree: '', fieldOfStudy: '', gpa: '', startDate: years[0] || '', endDate: years[1] || '' };
+    } else if (years.length >= 2) {
+      // Two years on same line = likely a new institution row
       pushEducation();
       currentEducation = { institution: '', degree: '', fieldOfStudy: '', gpa: '', startDate: years[0] || '', endDate: years[1] || '' };
+    } else if (isInstitutionLine && currentEducation.institution && (currentEducation.degree || currentEducation.gpa || currentEducation.fieldOfStudy)) {
+      pushEducation();
+      currentEducation = { institution: '', degree: '', fieldOfStudy: '', gpa: '', startDate: years[0] || '', endDate: years[1] || '' };
+    } else if (years.length === 1 && currentEducation.startDate && !currentEducation.endDate) {
+      currentEducation.endDate = years[0];
+    } else if (years.length === 1 && !currentEducation.startDate) {
+      currentEducation.startDate = years[0];
     }
-    const withoutYears = line.replace(/\b(19|20)\d{2}\b/g, '').replace(/[-|,:]+$/g, '').trim();
-    const gpaMatch = line.match(/gpa[:\s]+([\d.]+)/i);
-    if (gpaMatch) currentEducation.gpa = gpaMatch[1];
-    if (!currentEducation.institution && withoutYears) currentEducation.institution = withoutYears;
-    else if (!currentEducation.degree && withoutYears) currentEducation.degree = withoutYears;
-    else if (!currentEducation.fieldOfStudy && withoutYears) currentEducation.fieldOfStudy = withoutYears;
+
+    if (scoreText) currentEducation.gpa = scoreText;
+    if (withoutYears) {
+      if (isInstitutionLine && !currentEducation.institution) currentEducation.institution = withoutYears;
+      else if (isDegreeLine && !currentEducation.degree) currentEducation.degree = withoutYears;
+      else if (!currentEducation.institution) currentEducation.institution = withoutYears;
+      else if (!currentEducation.degree) currentEducation.degree = withoutYears;
+      else if (!currentEducation.fieldOfStudy) currentEducation.fieldOfStudy = withoutYears;
+    }
   };
 
   lines.forEach((rawLine) => {
@@ -690,6 +798,35 @@ function hasImportableResumeData(data = {}) {
   return personalText || hasSectionData;
 }
 
+function hasLikelyMisclassifiedSkills(data = {}) {
+  const resume = data.resumeData || data.resume_data || data;
+  const skills = resume.skills || {};
+  const allSkills = [
+    ...(Array.isArray(skills.technical) ? skills.technical : []),
+    ...(Array.isArray(skills.hard_skills) ? skills.hard_skills : []),
+    ...(Array.isArray(skills.hardSkills) ? skills.hardSkills : []),
+    ...(Array.isArray(skills.skills) ? skills.skills : []),
+  ].map((item) => String(item || ''));
+  const sectionLikeSkillCount = allSkills.filter((item) => sectionFromHeaderV2(item)).length;
+  const nonSkillPatternCount = allSkills.filter((item) =>
+    /\b(university|college|school|institute|cgpa|gpa|percentage|matriculation|intermediate|earned|awarded|certified)\b/i.test(item)
+  ).length;
+  const hasStructuredSections = [
+    resume.experience,
+    resume.work_experience,
+    resume.workExperience,
+    resume.employment,
+    resume.education,
+    resume.academic_background,
+    resume.academicBackground,
+    resume.certifications,
+    resume.certificates,
+    resume.credentials,
+  ].some((value) => Array.isArray(value) && value.length > 0);
+
+  return allSkills.length >= 30 && !hasStructuredSections && (sectionLikeSkillCount > 0 || nonSkillPatternCount > 2);
+}
+
 function hasResumeSections(data = {}) {
   const resume = data.resumeData || data.resume_data || data;
   const skills = resume.skills || {};
@@ -761,6 +898,7 @@ export default function ResumeForm() {
   };
 
   const expandAllWithData = () => {
+    autoExpandedRef.current = false; // Reset so useEffect can fire
     setOpenSections({
       personal: true,
       experience: true,
@@ -816,13 +954,13 @@ export default function ResumeForm() {
 
       const res = await uploadResume(formData);
 
-      if (res.data?.resumeData && hasResumeSections(res.data.resumeData)) {
+      if (res.data?.resumeData && hasImportableResumeData(res.data.resumeData) && !hasLikelyMisclassifiedSkills(res.data.resumeData)) {
         dispatch(loadResume(res.data.resumeData));
-        expandAllWithData(res.data.resumeData);
+        expandAllWithData();
         toast.dismiss(toastId);
         toast.success('Resume imported successfully! Review and edit as needed.');
       } else {
-        throw new Error('Server parser returned only contact details');
+        throw new Error('Server parser returned incomplete or misclassified data');
       }
     } catch (serverErr) {
       console.warn('Server parse failed, trying client-side:', serverErr);
@@ -892,8 +1030,8 @@ export default function ResumeForm() {
 
       const searchParams = new URLSearchParams(window.location.search);
       const resumeId = searchParams.get('id');
-      
-      const res = resumeId 
+
+      const res = resumeId
         ? await updateResume(resumeId, payload)
         : await saveResume(payload);
       toast.dismiss('save-resume');
@@ -1052,9 +1190,9 @@ export default function ResumeForm() {
       </div>
 
       {/* ── SECTION 1: Personal Info ── */}
-      <Accordion 
-        title="Personal Information" 
-        icon={<User size={16} />} 
+      <Accordion
+        title="Personal Information"
+        icon={<User size={16} />}
         isOpen={openSections.personal}
         onToggle={() => toggleSection('personal')}
       >
@@ -1150,9 +1288,9 @@ export default function ResumeForm() {
       </Accordion>
 
       {/* ── SECTION 2: Experience ── */}
-      <Accordion 
-        title="Experience" 
-        icon={<Briefcase size={16} />} 
+      <Accordion
+        title="Experience"
+        icon={<Briefcase size={16} />}
         badge={expCount || null}
         isOpen={openSections.experience}
         onToggle={() => toggleSection('experience')}
@@ -1254,9 +1392,9 @@ export default function ResumeForm() {
       </Accordion>
 
       {/* ── SECTION 3: Education ── */}
-      <Accordion 
-        title="Education" 
-        icon={<GraduationCap size={16} />} 
+      <Accordion
+        title="Education"
+        icon={<GraduationCap size={16} />}
         badge={eduCount || null}
         isOpen={openSections.education}
         onToggle={() => toggleSection('education')}
@@ -1348,9 +1486,9 @@ export default function ResumeForm() {
       </Accordion>
 
       {/* ── SECTION 4: Skills ── */}
-      <Accordion 
-        title="Skills" 
-        icon={<Wrench size={16} />} 
+      <Accordion
+        title="Skills"
+        icon={<Wrench size={16} />}
         badge={skillCount || null}
         isOpen={openSections.skills}
         onToggle={() => toggleSection('skills')}
@@ -1374,9 +1512,9 @@ export default function ResumeForm() {
       </Accordion>
 
       {/* ── SECTION 5: Projects ── */}
-      <Accordion 
-        title="Projects" 
-        icon={<FolderOpen size={16} />} 
+      <Accordion
+        title="Projects"
+        icon={<FolderOpen size={16} />}
         badge={projCount || null}
         isOpen={openSections.projects}
         onToggle={() => toggleSection('projects')}
@@ -1447,9 +1585,9 @@ export default function ResumeForm() {
       </Accordion>
 
       {/* ── SECTION 6: Certifications ── */}
-      <Accordion 
-        title="Certifications" 
-        icon={<Award size={16} />} 
+      <Accordion
+        title="Certifications"
+        icon={<Award size={16} />}
         badge={certCount || null}
         isOpen={openSections.certifications}
         onToggle={() => toggleSection('certifications')}

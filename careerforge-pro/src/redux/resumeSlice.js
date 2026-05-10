@@ -39,6 +39,44 @@ const asList = (value) => {
   return [];
 };
 
+const cleanSkillsList = (arr) => {
+  const seen = new Set();
+  return (Array.isArray(arr) ? arr : asList(arr))
+    .map(item => asText(item).trim())
+    .filter(item => {
+      if (!item || item.length < 2 || item.length > 40) return false;
+      const lower = item.toLowerCase();
+      const collapsed = lower.replace(/\s+/g, '');
+      if (/^(skills?|technicalskills?|education|experience|internship|projects?|certifications?|certificates?|achievements?|summary)$/.test(collapsed)) return false;
+      // Remove education data
+      if (/\b(university|college|school|institute|polytechnic)\b/.test(lower)) return false;
+      if (/\b(bachelor|master|b\.?\s*tech|b\.?\s*sc|m\.?\s*tech|phd|matriculation|intermediate|10th|12th)\b/.test(lower)) return false;
+      if (/\b(cgpa|gpa|percentage|grade)\b/.test(lower)) return false;
+      // Remove location data
+      if (/\b(india|bihar|punjab|delhi|mumbai|bangalore|patna)\b/.test(lower)) return false;
+      // Remove date-heavy strings
+      if (/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{4}/.test(lower)) return false;
+      if (/\b(19|20)\d{2}\b/.test(item)) return false;
+      // Remove sentence fragments (more than 5 words with connecting words)
+      const words = item.split(/\s+/);
+      if (words.length > 4) return false;
+      if (words.length > 2 && /\b(for|with|using|of|to|the|by|in)\b/.test(lower)) return false;
+      // Remove achievement/certification entries that ended up here
+      if (/\b(earned|achieved|gained|completed|awarded|certified)\b/.test(lower)) return false;
+      if (/\b(vendor|dashboard|badge|certificate|certification|rating|contest)\b/.test(lower)) return false;
+      if (seen.has(lower)) return false;
+      seen.add(lower);
+      return true;
+    });
+};
+
+const cleanJobTitle = (value) => {
+  const title = asText(value);
+  return /^(skills?|education|experience|projects?|certifications?|summary|achievements?)$/i.test(title.replace(/\s+/g, ''))
+    ? ''
+    : title;
+};
+
 const asArray = (...values) => {
   for (const value of values) {
     if (Array.isArray(value)) return value;
@@ -139,7 +177,7 @@ const normalizeResumeData = (payload = {}) => {
       endDate: asText(edu.endDate, edu.end_date, edu.endYear, edu.end_year, edu.to),
       current: Boolean(edu.current || edu.is_current),
       gpa: asText(edu.gpa, edu.grade, edu.score),
-    })).filter((edu) => hasEntryData(edu, ['institution', 'degree', 'fieldOfStudy', 'startDate', 'endDate', 'gpa']))
+    })).filter((edu) => hasEntryData(edu, ['institution', 'degree', 'fieldOfStudy']))
     : [];
 
   const rawProjects = asArray(data.projects, data.personal_projects, data.personalProjects);
@@ -165,7 +203,7 @@ const normalizeResumeData = (payload = {}) => {
         issuer: asText(cert.issuer, cert.organization, cert.authority, cert.provider),
         date: asText(cert.date, cert.issueDate, cert.issue_date, cert.year),
       };
-    }).filter((cert) => hasEntryData(cert, ['name', 'issuer', 'date']))
+    }).filter((cert) => hasEntryData(cert, ['name']))
     : [];
 
   const rawLocation = asText(pi.location, pi.address, pi.city, data.location);
@@ -176,15 +214,25 @@ const normalizeResumeData = (payload = {}) => {
   const rawSkills = data.skills || {};
   const technicalSkills = Array.isArray(rawSkills)
     ? rawSkills
-    : rawSkills.technical || rawSkills.hard_skills || rawSkills.hardSkills || rawSkills.skills || data.technicalSkills || languageSkills;
-  const softSkills = rawSkills.soft || rawSkills.soft_skills || rawSkills.softSkills || data.softSkills;
-  const toolSkills = rawSkills.tools || rawSkills.technologies || rawSkills.tech_stack || rawSkills.techStack || data.tools;
+    : rawSkills.technical || rawSkills.hard_skills || rawSkills.hardSkills || rawSkills.skills || data.technicalSkills || (languageSkills ? languageSkills.split(/[,;]/).map(s => s.trim()).filter(Boolean) : []);
+  const softSkills = rawSkills.soft || rawSkills.soft_skills || rawSkills.softSkills || data.softSkills || [];
+  const toolSkills = rawSkills.tools || rawSkills.technologies || rawSkills.tech_stack || rawSkills.techStack || data.tools || [];
+  const cleanedTechnicalSkills = cleanSkillsList(asList(technicalSkills));
+  const cleanedSoftSkills = cleanSkillsList(asList(softSkills));
+  const cleanedToolSkills = cleanSkillsList(asList(toolSkills));
+  const technicalSkillSet = new Set(cleanedTechnicalSkills.map((skill) => skill.toLowerCase()));
+  const dedupedSoftSkills = cleanedSoftSkills.filter((skill) => !technicalSkillSet.has(skill.toLowerCase()));
+  const softSkillSet = new Set(dedupedSoftSkills.map((skill) => skill.toLowerCase()));
+  const dedupedToolSkills = cleanedToolSkills.filter((skill) => {
+    const normalizedSkill = skill.toLowerCase();
+    return !technicalSkillSet.has(normalizedSkill) && !softSkillSet.has(normalizedSkill);
+  });
 
   return {
     personalInfo: {
       firstName,
       lastName,
-      jobTitle: asText(pi.jobTitle, pi.job_title, pi.role, pi.position, pi.title, data.jobTitle, data.job_title),
+      jobTitle: cleanJobTitle(asText(pi.jobTitle, pi.job_title, pi.role, pi.position, pi.title, data.jobTitle, data.job_title)),
       email: asText(pi.email, pi.email_address, data.email),
       phone: asText(pi.phone, pi.phone_number, data.phone),
       location,
@@ -195,9 +243,9 @@ const normalizeResumeData = (payload = {}) => {
     experience: experience.length ? experience : [blankExperience()],
     education: education.length ? education : [blankEducation()],
     skills: {
-      technical: asList(technicalSkills),
-      soft: asList(softSkills),
-      tools: asList(toolSkills),
+      technical: cleanedTechnicalSkills,
+      soft: dedupedSoftSkills,
+      tools: dedupedToolSkills,
     },
     projects: projects.length ? projects : [blankProject()],
     certifications,
