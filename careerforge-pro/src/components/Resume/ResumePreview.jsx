@@ -373,7 +373,15 @@ export default function ResumePreview() {
                         <p className="rp-item__tech">{safeText(proj.techStack)}</p>
                       )}
                       {proj.description && (
-                        <p className="rp-item__desc">{highlightText(proj.description)}</p>
+                        toBullets(proj.description).length > 1 ? (
+                          <ul className="rp-bullets">
+                            {toBullets(proj.description).map((b, i) => (
+                              <li key={i}>{highlightText(b)}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="rp-item__desc">{highlightText(proj.description)}</p>
+                        )
                       )}
                     </div>
                   );

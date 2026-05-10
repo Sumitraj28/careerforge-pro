@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { FileText, Loader2 } from 'lucide-react';
 import ResumeForm from '../components/Resume/ResumeForm';
 import ResumePreview from '../components/Resume/ResumePreview';
-import { loadResume, resetResume } from '../redux/resumeSlice';
+import { loadResume } from '../redux/resumeSlice';
 import { getResumeById } from '../utils/api';
 import './Builder.css';
 import toast from 'react-hot-toast';
@@ -36,9 +36,6 @@ export default function Builder() {
            toast.error('Failed to load resume data');
         })
         .finally(() => setLoading(false));
-    } else {
-      // If no ID, start fresh
-      dispatch(resetResume());
     }
   }, [searchParams, dispatch]);
 

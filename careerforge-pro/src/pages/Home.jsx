@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
+import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import toast from 'react-hot-toast';
 import {
   ArrowRight,
@@ -23,8 +24,9 @@ import {
   Upload,
   Wand2,
 } from 'lucide-react';
-import { rewriteResumeSuccess, setLoading } from '../redux/resumeSlice';
+import { loadResume, setLoading } from '../redux/resumeSlice';
 import { uploadResume } from '../utils/api';
+import { extractPdfPageText, hasResumeSections, parseResumeText } from '../utils/resumeTextParser';
 import './Home.css';
 
 function useScrollReveal(threshold = 0.15) {
@@ -141,12 +143,35 @@ function UploadCard() {
 
     try {
       const res = await uploadResume(formData);
-      dispatch(rewriteResumeSuccess(res.data.resumeData));
+      if (!hasResumeSections(res.data?.resumeData)) {
+        throw new Error('Server parser returned only contact details');
+      }
+      dispatch(loadResume(res.data.resumeData));
       toast.success('Resume parsed successfully.');
       navigate('/builder');
     } catch (err) {
-      toast.error('Failed to parse resume.');
-      console.error(err);
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          fullText += `${extractPdfPageText(textContent)}\n`;
+        }
+
+        const parsed = parseResumeText(fullText);
+        dispatch(loadResume(parsed));
+        toast.success('Resume imported. Review each section for accuracy.');
+        navigate('/builder');
+      } catch (clientErr) {
+        toast.error('Failed to parse resume.');
+        console.error(err, clientErr);
+      }
     } finally {
       setIsUploading(false);
       dispatch(setLoading(false));

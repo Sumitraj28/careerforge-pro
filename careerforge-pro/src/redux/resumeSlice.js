@@ -9,6 +9,19 @@ const asText = (...values) => {
       if (joined) return joined;
       continue;
     }
+    if (typeof value === 'object') {
+      const text = asText(
+        value.text,
+        value.description,
+        value.summary,
+        value.title,
+        value.name,
+        value.value,
+        value.label
+      );
+      if (text) return text;
+      continue;
+    }
     const text = String(value).trim();
     if (text) return text;
   }
@@ -24,6 +37,37 @@ const asList = (value) => {
       .filter(Boolean);
   }
   return [];
+};
+
+const asArray = (...values) => {
+  for (const value of values) {
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === 'object') return Object.values(value).filter(Boolean);
+  }
+  return [];
+};
+
+const hasText = (value) => asText(value).length > 0;
+
+const hasEntryData = (entry = {}, fields = []) => fields.some((field) => hasText(entry[field]));
+
+const toMonthValue = (value) => {
+  const text = asText(value);
+  if (!text) return '';
+  const normalized = text.replace(/[–—]/g, '-').trim();
+  const isoMonth = normalized.match(/^(\d{4})-(\d{1,2})$/);
+  if (isoMonth) return `${isoMonth[1]}-${isoMonth[2].padStart(2, '0')}`;
+  const monthYear = normalized.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+(\d{4})\b/i);
+  if (monthYear) {
+    const months = {
+      jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+      jul: '07', aug: '08', sep: '09', sept: '09', oct: '10', nov: '11', dec: '12',
+    };
+    return `${monthYear[2]}-${months[monthYear[1].toLowerCase()]}`;
+  }
+  const yearMonth = normalized.match(/\b(\d{4})[\/\s.](\d{1,2})\b/);
+  if (yearMonth) return `${yearMonth[1]}-${yearMonth[2].padStart(2, '0')}`;
+  return normalized;
 };
 
 const blankExperience = () => ({
@@ -70,22 +114,22 @@ const normalizeResumeData = (payload = {}) => {
     lastName = parts.slice(1).join(' ');
   }
 
-  const rawExp = data.experience || data.work_experience || data.workExperience || data.employment || data.history || [];
-  const experience = Array.isArray(rawExp)
+  const rawExp = asArray(data.experience, data.work_experience, data.workExperience, data.employment, data.history);
+  const experience = rawExp.length
     ? rawExp.map((exp = {}) => ({
       id: asText(exp.id, exp._id) || uuidv4(),
       company: asText(exp.company, exp.organization, exp.employer, exp.companyName, exp.company_name),
       position: asText(exp.position, exp.jobTitle, exp.job_title, exp.role, exp.title, exp.designation),
-      startDate: asText(exp.startDate, exp.start_date, exp.from, exp.start),
-      endDate: asText(exp.endDate, exp.end_date, exp.to, exp.end),
+      startDate: toMonthValue(exp.startDate || exp.start_date || exp.from || exp.start),
+      endDate: toMonthValue(exp.endDate || exp.end_date || exp.to || exp.end),
       current: Boolean(exp.current || exp.is_current || exp.present || /present|current/i.test(asText(exp.endDate, exp.end_date, exp.to, exp.end))),
       location: asText(exp.location, exp.city),
-      description: asText(exp.description, exp.responsibilities, exp.achievements, exp.bullets, exp.highlights),
-    }))
+      description: asText(exp.description, exp.responsibilities, exp.achievements, exp.bullets, exp.highlights, exp.tasks),
+    })).filter((exp) => hasEntryData(exp, ['company', 'position', 'startDate', 'endDate', 'location', 'description']))
     : [];
 
-  const rawEdu = data.education || data.academic_background || data.academicBackground || [];
-  const education = Array.isArray(rawEdu)
+  const rawEdu = asArray(data.education, data.academic_background, data.academicBackground);
+  const education = rawEdu.length
     ? rawEdu.map((edu = {}) => ({
       id: asText(edu.id, edu._id) || uuidv4(),
       institution: asText(edu.institution, edu.school, edu.university, edu.college),
@@ -95,22 +139,22 @@ const normalizeResumeData = (payload = {}) => {
       endDate: asText(edu.endDate, edu.end_date, edu.endYear, edu.end_year, edu.to),
       current: Boolean(edu.current || edu.is_current),
       gpa: asText(edu.gpa, edu.grade, edu.score),
-    }))
+    })).filter((edu) => hasEntryData(edu, ['institution', 'degree', 'fieldOfStudy', 'startDate', 'endDate', 'gpa']))
     : [];
 
-  const rawProjects = data.projects || data.personal_projects || data.personalProjects || [];
-  const projects = Array.isArray(rawProjects)
+  const rawProjects = asArray(data.projects, data.personal_projects, data.personalProjects);
+  const projects = rawProjects.length
     ? rawProjects.map((project = {}) => ({
       id: asText(project.id, project._id) || uuidv4(),
       name: asText(project.name, project.title, project.projectName, project.project_name),
       description: asText(project.description, project.summary, project.details, project.bullets),
       techStack: asText(project.techStack, project.tech_stack, project.technologies, project.tools),
       link: asText(project.link, project.url, project.github, project.github_url),
-    }))
+    })).filter((project) => hasEntryData(project, ['name', 'description', 'techStack', 'link']))
     : [];
 
-  const rawCerts = data.certifications || data.certificates || data.credentials || data.licenses || [];
-  const certifications = Array.isArray(rawCerts)
+  const rawCerts = asArray(data.certifications, data.certificates, data.credentials, data.licenses);
+  const certifications = rawCerts.length
     ? rawCerts.map((cert = {}) => {
       if (typeof cert === 'string') {
         return { id: uuidv4(), name: cert, issuer: '', date: '' };
@@ -121,11 +165,18 @@ const normalizeResumeData = (payload = {}) => {
         issuer: asText(cert.issuer, cert.organization, cert.authority, cert.provider),
         date: asText(cert.date, cert.issueDate, cert.issue_date, cert.year),
       };
-    })
+    }).filter((cert) => hasEntryData(cert, ['name', 'issuer', 'date']))
     : [];
 
+  const rawLocation = asText(pi.location, pi.address, pi.city, data.location);
+  const languageSkills = /^languages?\s*:/i.test(rawLocation)
+    ? rawLocation.replace(/^languages?\s*:\s*/i, '')
+    : '';
+  const location = languageSkills ? '' : rawLocation;
   const rawSkills = data.skills || {};
-  const technicalSkills = rawSkills.technical || rawSkills.hard_skills || rawSkills.hardSkills || rawSkills.skills || data.technicalSkills;
+  const technicalSkills = Array.isArray(rawSkills)
+    ? rawSkills
+    : rawSkills.technical || rawSkills.hard_skills || rawSkills.hardSkills || rawSkills.skills || data.technicalSkills || languageSkills;
   const softSkills = rawSkills.soft || rawSkills.soft_skills || rawSkills.softSkills || data.softSkills;
   const toolSkills = rawSkills.tools || rawSkills.technologies || rawSkills.tech_stack || rawSkills.techStack || data.tools;
 
@@ -136,7 +187,7 @@ const normalizeResumeData = (payload = {}) => {
       jobTitle: asText(pi.jobTitle, pi.job_title, pi.role, pi.position, pi.title, data.jobTitle, data.job_title),
       email: asText(pi.email, pi.email_address, data.email),
       phone: asText(pi.phone, pi.phone_number, data.phone),
-      location: asText(pi.location, pi.address, pi.city, data.location),
+      location,
       linkedin: asText(pi.linkedin, pi.linkedin_url, pi.linkedIn, data.linkedin),
       github: asText(pi.github, pi.github_url, data.github),
       summary: asText(pi.summary, pi.professional_summary, pi.professionalSummary, pi.about, pi.objective, data.summary),
@@ -335,16 +386,13 @@ const resumeSlice = createSlice({
       state.selectedTemplate = action.payload;
     },
     rewriteResumeSuccess: (state, action) => {
-      const raw = action.payload?.resumeData || action.payload?.resume_data || action.payload || {};
       const data = normalizeResumeData(action.payload);
       state.personalInfo = { ...state.personalInfo, ...data.personalInfo };
-      if (Array.isArray(raw.experience)) state.experience = data.experience;
-      if (Array.isArray(raw.education)) state.education = data.education;
-      if (raw.skills) state.skills = { ...state.skills, ...data.skills };
-      if (Array.isArray(raw.projects)) state.projects = data.projects;
-      if (Array.isArray(raw.certifications) || Array.isArray(raw.certificates)) {
-        state.certifications = data.certifications;
-      }
+      state.experience = data.experience;
+      state.education = data.education;
+      state.skills = data.skills;
+      state.projects = data.projects;
+      state.certifications = data.certifications;
       state.isLoading = false;
     },
     resetResume: () => {
