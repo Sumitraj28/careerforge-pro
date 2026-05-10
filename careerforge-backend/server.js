@@ -23,13 +23,16 @@ app.use(compression())
 
 // CORS Configuration
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [process.env.FRONTEND_URL]
+  ? (process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(u => u.trim()) : [])
   : ['http://localhost:3000', 'http://localhost:5173']
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) callback(null, true)
-    else callback(new Error('CORS policy: Origin not allowed'))
+    else {
+      console.warn(`CORS blocked for origin: ${origin}`)
+      callback(new Error('CORS policy: Origin not allowed'))
+    }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
