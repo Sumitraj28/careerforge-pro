@@ -18,6 +18,9 @@ import {
   setATSSuggestions,
   setLoading,
   rewriteResumeSuccess,
+  addCertification,
+  updateCertification,
+  removeCertification,
 } from '../../redux/resumeSlice';
 import ATSScoreBar from '../Shared/ATSScoreBar';
 import KeywordChip from '../Shared/KeywordChip';
@@ -36,7 +39,7 @@ import {
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { extractKeywords, rewriteResume, getATSScore, uploadResume } from '../../utils/api';
+import { extractKeywords, rewriteResume, getATSScore, uploadResume, saveResume } from '../../utils/api';
 import './ResumeForm.css';
 
 /* ── Accordion wrapper ── */
@@ -116,11 +119,13 @@ export default function ResumeForm() {
     education,
     skills,
     projects,
+    certifications,
     jdText,
     keywords,
     atsScore,
     atsSuggestions,
     isLoading,
+    selectedTemplate
   } = resume;
 
   const [analyzingJD, setAnalyzingJD] = useState(false);
@@ -164,6 +169,40 @@ export default function ResumeForm() {
 
   const onProj = (id, field, value) => {
     dispatch(updateProject({ id, field, value }));
+  };
+
+  const onCert = (id, field, value) => {
+    dispatch(updateCertification({ id, field, value }));
+  };
+
+  /* ── Save Resume ── */
+  const handleSave = async () => {
+    toast.loading('Saving resume...', { id: 'save-resume' });
+    try {
+      const resumeData = {
+        title: personalInfo.jobTitle || 'My Resume',
+        resume_data: { personalInfo, experience, education, skills, projects, certifications, selectedTemplate },
+        ats_score: atsScore,
+        job_description: jdText,
+        keywords: keywords,
+      };
+      
+      const searchParams = new URLSearchParams(window.location.search);
+      const resumeId = searchParams.get('id');
+      if (resumeId) resumeData._id = resumeId;
+
+      const res = await saveResume(resumeData);
+      toast.dismiss('save-resume');
+      toast.success('Resume saved successfully!');
+      
+      if (!resumeId && res.data._id) {
+        window.history.replaceState(null, '', `?id=${res.data._id}`);
+      }
+    } catch (err) {
+      toast.dismiss('save-resume');
+      toast.error('Failed to save resume.');
+      console.error(err);
+    }
   };
 
   /* ── AI: Analyze JD ── */
@@ -264,14 +303,21 @@ export default function ResumeForm() {
             <span className={`rf-badge ${atsBadgeClass}`}>{atsScore}% ATS</span>
           )}
         </div>
-        <div className="rf-header__right">
+        <div className="rf-header__right" style={{ display: 'flex', gap: '10px' }}>
           <input type="file" accept=".pdf" ref={fileInputRef} hidden onChange={handleFileUpload} />
           <button 
             type="button" 
-            style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#eef1fb', color: '#4f6ef7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+            className="rf-header-btn rf-header-btn--upload"
             onClick={() => fileInputRef.current?.click()}
           >
             Upload PDF
+          </button>
+          <button 
+            type="button" 
+            className="rf-header-btn rf-header-btn--save"
+            onClick={handleSave}
+          >
+            Save Resume
           </button>
         </div>
       </div>
@@ -627,6 +673,60 @@ export default function ResumeForm() {
           onClick={() => dispatch(addProject())}
         >
           <Plus size={16} /> Add Project
+        </button>
+      </Accordion>
+
+      {/* ── SECTION 6: Certifications ── */}
+      <Accordion title="Certifications" icon={<Award size={16} />}>
+        {certifications?.map((cert, idx) => (
+          <div className="rf-entry" key={cert.id}>
+            <div className="rf-entry__header">
+              <span className="rf-entry__num">#{idx + 1}</span>
+              <button
+                type="button"
+                className="rf-entry__delete"
+                onClick={() => dispatch(removeCertification(cert.id))}
+              >
+                <Trash2 size={14} /> Remove
+              </button>
+            </div>
+            <div className="rf-field">
+              <label className="rf-label">Certification Name</label>
+              <input
+                className="rf-input"
+                placeholder="AWS Certified Solutions Architect"
+                value={cert.name}
+                onChange={(e) => onCert(cert.id, 'name', e.target.value)}
+              />
+            </div>
+            <div className="rf-grid rf-grid--2">
+              <div className="rf-field">
+                <label className="rf-label">Issuing Organization</label>
+                <input
+                  className="rf-input"
+                  placeholder="Amazon Web Services"
+                  value={cert.issuer}
+                  onChange={(e) => onCert(cert.id, 'issuer', e.target.value)}
+                />
+              </div>
+              <div className="rf-field">
+                <label className="rf-label">Date</label>
+                <input
+                  className="rf-input"
+                  placeholder="Jan 2023"
+                  value={cert.date}
+                  onChange={(e) => onCert(cert.id, 'date', e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="rf-add-btn"
+          onClick={() => dispatch(addCertification())}
+        >
+          <Plus size={16} /> Add Certification
         </button>
       </Accordion>
 

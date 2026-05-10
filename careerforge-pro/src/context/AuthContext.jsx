@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch();
 
-  const API_URL = import.meta.env?.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+  const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
   // Sync user to Redux whenever it changes
   useEffect(() => {

@@ -101,7 +101,7 @@ export default function Dashboard() {
             jobTitle: r.job_description ? r.job_description.substring(0, 30) + '...' : r.resume_data?.personalInfo?.jobTitle || 'No Title',
             atsScore: r.ats_score,
             updatedAt: new Date(r.updatedAt).toLocaleDateString(),
-            color: r.ats_score >= 75 ? '#22c55e' : r.ats_score >= 50 ? '#eab308' : '#ef4444'
+            color: r.ats_score >= 75 ? '#2f7a45' : r.ats_score >= 50 ? '#d6a36c' : '#b54434'
           }));
           setResumes(mappedResumes);
         }
@@ -483,7 +483,7 @@ export default function Dashboard() {
                   </p>
                   <button
                     className="dash-empty__btn"
-                    style={{ background: '#8b5cf6', color: '#fff', border: 'none' }}
+                    style={{ background: '#2f4a34', color: '#fffaf0', border: 'none' }}
                     onClick={() => {
                       if (isFree) setUpgradeModal(true);
                       else navigate('/cover-letter');
@@ -497,7 +497,7 @@ export default function Dashboard() {
                 <div className="dash-grid" id="cover-letter-grid">
                   {coverLetters.map((cl) => (
                     <div className="rcard" key={cl._id}>
-                      <div className="rcard__thumb" style={{ '--accent': '#8b5cf6' }}>
+                      <div className="rcard__thumb" style={{ '--accent': '#9b4f38' }}>
                         <div className="rcard__preview">
                            <div className="rcard__preview-header" />
                            <div className="rcard__preview-line rcard__preview-line--short" />
@@ -601,7 +601,7 @@ export default function Dashboard() {
       {upgradeModal && (
         <div className="dash-modal-overlay" onClick={() => setUpgradeModal(false)}>
           <div className="dash-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="dash-modal__icon" style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#fff' }}>
+            <div className="dash-modal__icon" style={{ background: '#9b4f38', color: '#fffaf0' }}>
               <Crown size={24} />
             </div>
             <h3 className="dash-modal__title">Free Plan Limit Reached</h3>
@@ -619,7 +619,7 @@ export default function Dashboard() {
               </button>
               <button
                 className="dash-modal__btn"
-                style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#fff', border: 'none' }}
+                style={{ background: '#2f4a34', color: '#fffaf0', border: 'none' }}
                 onClick={() => {
                   setUpgradeModal(false);
                   navigate('/pricing');

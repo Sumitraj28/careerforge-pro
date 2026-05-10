@@ -12,20 +12,20 @@ const PLANS = {
   base: {
     name: 'CareerForge Base',
     description: 'All limited links, analytics, chat support, optimize hashtags, unlimited users.',
-    monthly: 80,   // $80.00
-    yearly: 720,   // $720.00 ($60/mo equivalent)
+    monthly: 8000,   // $80.00
+    yearly: 72000,   // $720.00 ($60/mo equivalent)
   },
   pro: {
     name: 'CareerForge Pro',
     description: 'Everything in Base plus unlimited resumes, ATS checker, cover letters, premium templates & priority support.',
-    monthly: 120,  // $120.00
-    yearly: 1080,  // $1,080.00 ($90/mo equivalent)
+    monthly: 12000,  // $120.00
+    yearly: 108000,  // $1,080.00 ($90/mo equivalent)
   },
   enterprise: {
     name: 'CareerForge Enterprise',
     description: 'Everything in Pro plus dedicated support, team collaboration, custom branding & API access.',
-    monthly: 260,  // $260.00
-    yearly: 2400,  // $2,400.00 ($200/mo equivalent)
+    monthly: 26000,  // $260.00
+    yearly: 240000,  // $2,400.00 ($200/mo equivalent)
   },
 }
 
@@ -66,7 +66,7 @@ async function createCheckoutSession(userId, userEmail, plan = 'pro', billingCyc
       }
     ],
     metadata: { userId, plan },
-    success_url: process.env.FRONTEND_URL + '/dashboard?payment=success',
+    success_url: process.env.FRONTEND_URL + '/payment/success',
     cancel_url: process.env.FRONTEND_URL + '/pricing',
   })
 

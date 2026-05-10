@@ -1,0 +1,1365 @@
+# CareerForge Pro — Complete Production Audit & Implementation Guide
+
+> **Stack:** React 19 + Redux Toolkit · Node/Express · MongoDB/Mongoose · Gemini 2.5 Flash · Stripe · Puppeteer  
+> **Goal:** Fully polished, optimized, scalable, error-free, visually premium, production-ready SaaS
+
+---
+
+## 1. Project Structure Analysis
+
+### Current Layout (Abbreviated)
+```
+careerforge-pro-main/
+├── careerforge-pro/          ← React frontend (Vite + CRA hybrid — broken)
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Auth/         Login, Signup ✅
+│   │   │   ├── Dashboard/    Dashboard.jsx = EMPTY, SavedResumes.jsx = EMPTY ❌
+│   │   │   ├── Payment/      StripeCheckout.jsx = EMPTY ❌
+│   │   │   ├── Resume/       ResumeTemplates.jsx = EMPTY ❌
+│   │   │   └── Shared/       Navbar, ATSScoreBar, KeywordChip, Loader, ProtectedRoute ✅
+│   │   ├── context/          AuthContext.jsx ✅
+│   │   ├── pages/            Home, Builder, Pricing, CoverLetter, Dashboard ✅
+│   │   ├── redux/            resumeSlice, userSlice, store ✅
+│   │   └── utils/            api.js, atsScorer.js ✅
+├── careerforge-backend/      ← Express API ✅
+│   ├── config/db.js          ✅
+│   ├── controllers/          aiController, paymentController, resumeController — EMPTY ❌
+│   ├── middleware/            authMiddleware ✅
+│   ├── models/               User, Resume, CoverLetter ✅
+│   ├── routes/               ai, auth, coverletter, payment, resume, upload ✅
+│   ├── services/             claudeService, geminiService, puppeteerService, stripeService ✅
+│   ├── index.js              Duplicate server entry — CONFLICT ❌
+│   ├── server.js             Real server entry ✅
+│   ├── debug_resume.pdf      Committed debug artifact ❌
+│   ├── output.txt            Committed debug artifact ❌
+│   ├── test_models.js        Test file in production ❌
+│   └── test_pdf.js           Test file in production ❌
+├── *.jsx, *.js (root)        30+ stray stub files (1-byte placeholders) ❌
+└── package.json (root)       Third conflicting package.json ❌
+```
+
+---
+
+## 2. Critical Bugs — Must Fix Immediately
+
+### BUG-01: CRA + Vite Conflict (App Won't Build)
+**Problem:** `main.jsx` imports `import App from './App.jsx'` and uses `ReactDOM.createRoot` (Vite), but `package.json` has `react-scripts` (CRA) as the build tool. `index.js` also exists alongside `main.jsx`.  
+**Impact:** `npm run build` will fail or produce incorrect output in production.
+
+**Fix — Choose Vite (recommended):**
+```bash
+# In careerforge-pro/
+rm src/index.js src/reportWebVitals.js src/setupTests.js src/logo.svg src/App.test.js
+```
+
+Replace `package.json` scripts:
+```json
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.0",
+    "vite": "^5.0.0"
+  }
+}
+```
+
+Create `vite.config.js`:
+```js
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: { port: 3000, proxy: { '/api': 'http://localhost:5001' } },
+  build: { outDir: 'dist', sourcemap: false }
+})
+```
+
+Create `index.html` in `careerforge-pro/` root:
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="CareerForge Pro – AI-powered resume builder with ATS optimization" />
+    <title>CareerForge Pro</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+```
+
+---
+
+### BUG-02: `VITE_BACKEND_URL` vs `REACT_APP_BACKEND_URL` Env Mismatch
+**Problem:** `api.js` and `AuthContext.jsx` read `import.meta.env?.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL`. With Vite, only `VITE_` prefixed env vars are exposed. With CRA, only `REACT_APP_` vars. The `?.` optional chaining on `import.meta.env` hides the bug silently.
+
+**Fix — Standardise on Vite:**
+```js
+// src/utils/api.js
+const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+```
+
+Create `careerforge-pro/.env.example`:
+```env
+VITE_BACKEND_URL=http://localhost:5001
+```
+
+Create `careerforge-pro/.env.production`:
+```env
+VITE_BACKEND_URL=https://your-backend.railway.app
+```
+
+---
+
+### BUG-03: Duplicate Server Entry (`index.js` vs `server.js`)
+**Problem:** Two server files exist. `index.js` is an incomplete skeleton. `server.js` is the real server. The Vercel config points to `server.js` but `package.json` main points to `server.js` too — fine — but `index.js` creates confusion and could accidentally be run.
+
+**Fix:**
+```bash
+rm careerforge-backend/index.js
+```
+
+---
+
+### BUG-04: Debug Artifact Written to Disk in Production Code
+**File:** `careerforge-backend/routes/resume.js` line 146  
+**Problem:**
+```js
+require('fs').writeFileSync('debug_resume.pdf', pdfBuffer); // ← PRODUCTION BUG
+```
+This writes a file to disk on every PDF generation in production. On serverless platforms (Vercel, Railway) this silently fails. On persistent servers, it fills disk space.
+
+**Fix — Remove the line entirely:**
+```js
+// REMOVE THIS LINE:
+// require('fs').writeFileSync('debug_resume.pdf', pdfBuffer);
+```
+
+---
+
+### BUG-05: Empty Component Files Referenced in Routing
+**Problem:** These files are 0 bytes but referenced in imports or expected by the app:
+- `components/Dashboard/Dashboard.jsx`
+- `components/Dashboard/SavedResumes.jsx`
+- `components/Payment/StripeCheckout.jsx`
+- `components/Resume/ResumeTemplates.jsx`
+
+If any import pulls from these, the app crashes.
+
+**Fix:** Delete them and ensure nothing imports them. The actual pages live in `src/pages/`:
+```bash
+rm src/components/Dashboard/Dashboard.jsx
+rm src/components/Dashboard/SavedResumes.jsx
+rm src/components/Payment/StripeCheckout.jsx
+rm src/components/Resume/ResumeTemplates.jsx
+```
+
+---
+
+### BUG-06: Duplicate Route Handler in `routes/ai.js`
+**Problem:** `/api/ai/cover-letter` is registered **twice** in the same file:
+```js
+router.post('/cover-letter', ...)  // line ~40
+router.post('/cover-letter', ...)  // line ~200
+```
+Express will only use the first handler. The second is dead code.
+
+**Fix:** Remove the second handler (the one around line 200 that duplicates the first).
+
+---
+
+### BUG-07: `multer` Saves Files to Local Disk (`uploads/` folder)
+**File:** `careerforge-backend/routes/upload.js`  
+**Problem:** `multer({ dest: 'uploads/' })` creates a local filesystem folder. On Vercel/serverless this doesn't persist. On Railway it will fill disk with temporary files if cleanup fails.
+
+**Fix — Use `memoryStorage`:**
+```js
+const multer = require('multer');
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') cb(null, true);
+    else cb(new Error('Only PDF files allowed'));
+  }
+});
+
+router.post('/parse', upload.single('resumeFile'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const data = await pdfParse(req.file.buffer); // Use buffer directly
+    const pdfText = data.text;
+    if (!pdfText.trim()) return res.status(400).json({ error: 'Could not extract text from PDF' });
+    const parsedData = await parseResume(pdfText);
+    res.json({ success: true, resumeData: parsedData });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ error: 'Failed to parse resume file' });
+  }
+});
+```
+
+---
+
+### BUG-08: Missing File Size Validation on Upload (Frontend)
+**File:** `careerforge-pro/src/pages/Home.jsx` — `UploadCard` component  
+**Problem:** The file input accepts `.pdf` but doesn't validate size before POSTing. A 50MB file will hit the server before being rejected.
+
+**Fix:**
+```js
+const handleFileUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error('File too large. Maximum size is 5MB.');
+    return;
+  }
+  // ... rest of handler
+};
+```
+
+---
+
+### BUG-09: Google OAuth — Random Password Security Issue
+**File:** `careerforge-backend/routes/auth.js`  
+**Problem:**
+```js
+password: Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8)
+```
+`Math.random()` is not cryptographically secure. Additionally, Google-authenticated users should never need a password, so storing one (even hashed) is unnecessary complexity.
+
+**Fix — Use crypto.randomBytes:**
+```js
+const crypto = require('crypto');
+// In Google auth handler:
+password: crypto.randomBytes(32).toString('hex')
+```
+Or better, make `password` optional in the schema with a flag `authProvider: { type: String, enum: ['local', 'google'], default: 'local' }`.
+
+---
+
+### BUG-10: Stripe Price Bug — Price in Dollars, Not Cents
+**File:** `careerforge-backend/services/stripeService.js`  
+**Problem:** 
+```js
+monthly: 80,   // ← This is $0.80, NOT $80.00
+yearly: 720,   // ← This is $7.20, NOT $720.00
+```
+Stripe's `unit_amount` expects cents. So `80` = $0.80, not $80.
+
+**Fix:**
+```js
+const PLANS = {
+  base:       { monthly: 8000,  yearly: 72000  },  // $80.00 / $720.00
+  pro:        { monthly: 12000, yearly: 108000 },  // $120.00 / $1,080.00
+  enterprise: { monthly: 26000, yearly: 240000 },  // $260.00 / $2,400.00
+}
+```
+
+---
+
+### BUG-11: Auth Route — `/api/auth/profile` Has Duplicate Inline Auth Logic
+**File:** `careerforge-backend/routes/auth.js`  
+**Problem:** The `/profile` route reimplements JWT verification manually instead of using the `authMiddleware`. This creates duplicate, harder-to-maintain code.
+
+**Fix:**
+```js
+router.get('/profile', authMiddleware, async (req, res) => {
+  const user = await User.findById(req.user._id).select('-password');
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json({ name: user.name, email: user.email, plan: user.plan, resumeCount: user.resumeCount });
+});
+```
+
+---
+
+## 3. Files to Delete (Cleanup)
+
+```bash
+# Stray root-level stub files (all ~15 bytes, placeholder content)
+rm careerforge-pro-main/AIRewrite.jsx
+rm careerforge-pro-main/ATSScoreBar.jsx
+rm careerforge-pro-main/Builder.jsx
+rm careerforge-pro-main/CoverLetterGenerator.jsx
+rm careerforge-pro-main/CoverLetterPDF.js
+rm careerforge-pro-main/Dashboard.jsx
+rm careerforge-pro-main/GeminiService.js
+rm careerforge-pro-main/JDAnalyzer.jsx
+rm careerforge-pro-main/KeywordChip.jsx
+rm careerforge-pro-main/KeywordHighlight.js
+rm careerforge-pro-main/LatencyCheck.js
+rm careerforge-pro-main/Navbar.jsx
+rm careerforge-pro-main/PaymentSuccess.jsx
+rm careerforge-pro-main/PlanLimits.js
+rm careerforge-pro-main/PreviewLogic.js
+rm careerforge-pro-main/ProTemplates.jsx
+rm careerforge-pro-main/ResumeForm.jsx
+rm careerforge-pro-main/ResumePreview.jsx
+rm careerforge-pro-main/RewriteResult.jsx
+rm careerforge-pro-main/SavedResumes.jsx
+rm careerforge-pro-main/StateSync.js
+rm careerforge-pro-main/StripeCheckout.jsx
+rm careerforge-pro-main/atsScorer.js
+rm careerforge-pro-main/components.js
+rm careerforge-pro-main/extractKeywords.js
+rm careerforge-pro-main/package.json          # Third conflicting package.json
+rm careerforge-pro-main/package-lock.json
+rm careerforge-pro-main/pdfRoute.js
+rm careerforge-pro-main/puppeteerService.js
+rm careerforge-pro-main/push_to_github.sh     # Contains credentials
+rm careerforge-pro-main/resumeSlice.js
+rm careerforge-pro-main/schema.js
+rm careerforge-pro-main/store.js
+rm careerforge-pro-main/stripeService.js
+rm careerforge-pro-main/stripeWebhook.js
+rm careerforge-pro-main/ci-fix.txt
+rm careerforge-pro-main/DONE.md
+rm careerforge-pro-main/FinalTesting.md
+
+# Backend debug/test artifacts
+rm careerforge-backend/debug_resume.pdf
+rm careerforge-backend/output.txt
+rm careerforge-backend/test_models.js
+rm careerforge-backend/test_pdf.js
+rm careerforge-backend/index.js              # Duplicate server entry
+
+# Empty component placeholders
+rm careerforge-pro/src/components/Dashboard/Dashboard.jsx
+rm careerforge-pro/src/components/Dashboard/SavedResumes.jsx
+rm careerforge-pro/src/components/Payment/StripeCheckout.jsx
+rm careerforge-pro/src/components/Resume/ResumeTemplates.jsx
+
+# Old CRA files (after migrating to Vite)
+rm careerforge-pro/src/index.js
+rm careerforge-pro/src/reportWebVitals.js
+rm careerforge-pro/src/setupTests.js
+rm careerforge-pro/src/logo.svg
+rm careerforge-pro/src/App.test.js
+rm careerforge-pro/src/App.css              # Empty/unused
+```
+
+---
+
+## 4. Backend Improvements
+
+### 4.1 Add Rate Limiting
+```bash
+npm install express-rate-limit
+```
+
+```js
+// careerforge-backend/middleware/rateLimiter.js
+const rateLimit = require('express-rate-limit');
+
+exports.apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: { error: 'Too many requests. Please try again later.' }
+});
+
+exports.aiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,
+  message: { error: 'AI request limit reached. Please wait a minute.' }
+});
+
+exports.authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // Strict limit for login/register
+  message: { error: 'Too many auth attempts. Please try again later.' }
+});
+```
+
+Apply in `server.js`:
+```js
+const { apiLimiter, aiLimiter, authLimiter } = require('./middleware/rateLimiter');
+app.use('/api/', apiLimiter);
+app.use('/api/ai/', aiLimiter);
+app.use('/api/auth/', authLimiter);
+```
+
+---
+
+### 4.2 Add Input Validation Middleware
+```bash
+npm install express-validator
+```
+
+Example for auth routes:
+```js
+const { body, validationResult } = require('express-validator');
+
+const validateRegistration = [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ error: errors.array()[0].msg });
+    next();
+  }
+];
+
+router.post('/register', validateRegistration, async (req, res) => { ... });
+```
+
+---
+
+### 4.3 Add Global Error Handler
+```js
+// careerforge-backend/middleware/errorHandler.js
+module.exports = (err, req, res, next) => {
+  console.error(`[${new Date().toISOString()}] ${req.method} ${req.path}:`, err);
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
+    error: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message
+  });
+};
+```
+
+Apply at the bottom of `server.js` (after all routes):
+```js
+app.use(require('./middleware/errorHandler'));
+```
+
+---
+
+### 4.4 Add Security Headers
+```bash
+npm install helmet
+```
+
+```js
+// In server.js
+const helmet = require('helmet');
+app.use(helmet({
+  contentSecurityPolicy: false, // Adjust if serving frontend from same origin
+}));
+```
+
+---
+
+### 4.5 Improve CORS Configuration
+```js
+// server.js
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [process.env.FRONTEND_URL]
+  : ['http://localhost:3000', 'http://localhost:5173'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+    else callback(new Error('CORS policy: Origin not allowed'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+```
+
+---
+
+### 4.6 JWT Token Refresh Mechanism
+The current 30-day token has no refresh flow. Add refresh tokens:
+
+```js
+// In generateToken:
+const generateTokens = (id) => {
+  const accessToken = jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+  const refreshToken = jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '30d' });
+  return { accessToken, refreshToken };
+};
+```
+
+Add to User model:
+```js
+refreshToken: { type: String, default: null },
+```
+
+Add refresh route:
+```js
+router.post('/refresh', async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) return res.status(401).json({ error: 'No refresh token' });
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(401).json({ error: 'Invalid refresh token' });
+    }
+    const tokens = generateTokens(user._id);
+    user.refreshToken = tokens.refreshToken;
+    await user.save();
+    res.json(tokens);
+  } catch {
+    res.status(401).json({ error: 'Refresh token expired' });
+  }
+});
+```
+
+---
+
+### 4.7 Add Controllers (Separate Business Logic from Routes)
+The `controllers/` directory exists but files are empty. Refactor routes to use controllers:
+
+```js
+// controllers/resumeController.js
+const Resume = require('../models/Resume');
+const User = require('../models/User');
+
+exports.getAllResumes = async (req, res, next) => {
+  try {
+    const resumes = await Resume.find({ user_id: req.user._id }).sort({ updatedAt: -1 });
+    res.json(resumes);
+  } catch (err) { next(err); }
+};
+
+exports.saveResume = async (req, res, next) => {
+  // ... business logic
+};
+// etc.
+```
+
+```js
+// routes/resume.js
+const { getAllResumes, saveResume } = require('../controllers/resumeController');
+router.get('/all', authMiddleware, getAllResumes);
+router.post('/save', authMiddleware, saveResume);
+```
+
+---
+
+### 4.8 Database Improvements
+
+#### Add Indexes to Models
+
+**Resume model:**
+```js
+resumeSchema.index({ user_id: 1, updatedAt: -1 });
+resumeSchema.index({ user_id: 1, _id: 1 });
+```
+
+**User model:**
+```js
+userSchema.index({ email: 1 });
+userSchema.index({ stripeCustomerId: 1 });
+```
+
+#### Add Soft Delete to Resume
+```js
+// Add to resumeSchema:
+isDeleted: { type: Boolean, default: false },
+deletedAt: { type: Date, default: null }
+
+// In getAllResumes:
+Resume.find({ user_id: userId, isDeleted: { $ne: true } })
+
+// In deleteResume (soft delete):
+await Resume.findOneAndUpdate(
+  { _id: id, user_id: req.user._id },
+  { isDeleted: true, deletedAt: new Date() }
+);
+```
+
+---
+
+### 4.9 Puppeteer — Production Configuration
+Puppeteer will fail on most cloud platforms without proper flags. Update `puppeteerService.js`:
+
+```js
+const puppeteer = require('puppeteer');
+
+async function getBrowser() {
+  return puppeteer.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-web-security',
+      '--font-render-hinting=none',
+    ],
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+  });
+}
+```
+
+> **Deployment Note:** On Railway/Render, Puppeteer works out of the box. On Vercel, Puppeteer is unsupported — use `@sparticuz/chromium` + `puppeteer-core` instead.
+
+---
+
+## 5. Frontend Improvements
+
+### 5.1 Environment Configuration
+Create `careerforge-pro/.env`:
+```env
+VITE_BACKEND_URL=http://localhost:5001
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_pub_key
+```
+
+Create `careerforge-pro/.env.production`:
+```env
+VITE_BACKEND_URL=https://your-backend.railway.app
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_pub_key
+```
+
+---
+
+### 5.2 Fix Redux Store — Missing Provider Wrapping
+`App.js` wraps with `<AuthProvider>` but the `Provider` is in `main.jsx`. This is correct — but `AuthContext.jsx` imports `useDispatch` from React-Redux, which requires the Redux Provider to be an ancestor. Since `Provider` wraps `App` in `main.jsx` and `AuthProvider` is inside `App`, this is fine **as long as** the import order in `main.jsx` is maintained. Document this clearly.
+
+---
+
+### 5.3 Add `axios` Interceptor for Token Expiry
+```js
+// src/utils/api.js — Add response interceptor
+API.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const refreshToken = localStorage.getItem('refreshToken');
+        const { data } = await axios.post(`${BASE_URL}/api/auth/refresh`, { refreshToken });
+        localStorage.setItem('token', data.accessToken);
+        localStorage.setItem('refreshToken', data.refreshToken);
+        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        return API(originalRequest);
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+---
+
+### 5.4 Add a `NotFound` (404) Page
+```jsx
+// src/pages/NotFound.jsx
+import { Link } from 'react-router-dom';
+export default function NotFound() {
+  return (
+    <div style={{ textAlign: 'center', padding: '120px 24px' }}>
+      <h1 style={{ fontSize: '6rem', fontWeight: 800, color: '#5b6cf7' }}>404</h1>
+      <p style={{ fontSize: '1.2rem', color: '#6b7194', marginBottom: 32 }}>
+        This page doesn't exist.
+      </p>
+      <Link to="/" style={{ background: '#5b6cf7', color: '#fff', padding: '12px 28px', borderRadius: 50, fontWeight: 600 }}>
+        Go Home
+      </Link>
+    </div>
+  );
+}
+```
+
+Add to `App.js`:
+```jsx
+import NotFound from './pages/NotFound';
+// In Routes:
+<Route path="*" element={<NotFound />} />
+```
+
+---
+
+### 5.5 Add `PaymentSuccess` Route
+The dashboard handles `?payment=success` query param but there's no dedicated success page. Add a proper route:
+
+```jsx
+// src/pages/PaymentSuccess.jsx
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { CheckCircle2 } from 'lucide-react';
+
+export default function PaymentSuccess() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    setTimeout(() => navigate('/dashboard?payment=success'), 2000);
+  }, [navigate]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 16 }}>
+      <CheckCircle2 size={64} color="#22c55e" />
+      <h2>Payment Successful!</h2>
+      <p>Redirecting to your dashboard...</p>
+    </div>
+  );
+}
+```
+
+Add to `App.js`:
+```jsx
+<Route path="/payment/success" element={<PaymentSuccess />} />
+<Route path="/payment/cancel" element={<Navigate to="/pricing" replace />} />
+```
+
+Update Stripe success/cancel URLs in `stripeService.js`:
+```js
+success_url: `${process.env.FRONTEND_URL}/payment/success`,
+cancel_url: `${process.env.FRONTEND_URL}/pricing`,
+```
+
+---
+
+### 5.6 `Home.css` Background Color Issue
+**Problem:** `--cf-bg: #4a9ff5` (sky blue) is used as the page background throughout the app, including `body`. This means every page has a bright blue background, which clashes with the clean white/neutral reference design.
+
+**Fix — Update `index.css`:**
+```css
+:root {
+  --cf-bg: #f6f8ff;         /* Change from #4a9ff5 to a soft neutral */
+  --cf-bg-light: #ffffff;
+}
+
+body {
+  background: var(--cf-bg); /* Neutral background for app */
+}
+```
+
+The hero section should keep the blue:
+```css
+/* Home.css */
+.hero { background: linear-gradient(135deg, #1e3a5f 0%, #3b5998 50%, #5b6cf7 100%); }
+.stats-section { background: #f6f8ff; }  /* Not #4a9ff5 */
+```
+
+---
+
+### 5.7 Responsive Design Fixes
+
+The current CSS has several mobile breakpoint issues. Add these to each major component:
+
+#### Navbar — Mobile Menu
+```css
+/* Shared/Navbar.css — Add */
+@media (max-width: 768px) {
+  .navbar__links { display: none; }
+  .navbar__links--open { display: flex; flex-direction: column; position: fixed; inset: 0; top: 64px; background: #fff; padding: 24px; z-index: 999; }
+  .navbar__hamburger { display: flex; }
+}
+```
+
+#### Hero — Stack on Mobile
+```css
+/* Home.css — Update */
+@media (max-width: 768px) {
+  .hero__container { grid-template-columns: 1fr; gap: 32px; padding: 0 16px; }
+  .hero__headline { font-size: clamp(1.8rem, 6vw, 2.4rem); min-height: auto; }
+  .hero__cta-row { flex-direction: column; }
+  .hero__cta-primary, .hero__cta-secondary { width: 100%; justify-content: center; }
+  .upload-card { padding: 28px 20px; }
+}
+
+@media (max-width: 480px) {
+  .hero { padding: 100px 0 48px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .features-grid { grid-template-columns: 1fr; }
+}
+```
+
+#### Builder — Two-column to Single Column
+```css
+/* Builder.css — Add */
+@media (max-width: 1024px) {
+  .builder { grid-template-columns: 1fr; }
+  .builder__preview { display: none; }  /* Or use a toggle tab */
+}
+```
+
+---
+
+### 5.8 Design Improvements to Match Reference
+
+The reference design (Resuify) uses:
+- **Clean white/off-white background** (not blue)
+- **Dark olive/forest green accent** (`#3d5a3e` range)
+- **Soft card shadows** with rounded corners
+- **Serif-like headline + clean sans body**
+- **Large resume preview mockup in hero**
+
+To match the reference more closely, update the design tokens:
+
+```css
+/* index.css — Updated tokens to match reference */
+:root {
+  --cf-primary: #2d4a2d;         /* Forest green */
+  --cf-accent: #4a7c4e;          /* Olive green */
+  --cf-accent-hover: #3d6b41;
+  --cf-bg: #f9f9f7;              /* Warm white */
+  --cf-surface: #ffffff;
+  --cf-text: #1a1a1a;
+  --cf-text-secondary: #4a4a4a;
+  --cf-text-muted: #767676;
+  --cf-border-solid: #e8e8e4;
+  --cf-gold: #e8a87c;            /* Warm copper accent */
+}
+```
+
+Update the primary CTA button color in `Home.css` and Navbar:
+```css
+.hero__cta-primary { background: var(--cf-primary); color: #fff; }
+.navbar__cta { background: var(--cf-primary); color: #fff; }
+```
+
+---
+
+## 6. Security Improvements
+
+### 6.1 Never Expose Raw Error Messages in Production
+```js
+// All route error handlers:
+res.status(500).json({
+  error: process.env.NODE_ENV === 'production'
+    ? 'An error occurred'
+    : error.message
+});
+```
+
+### 6.2 Add `.env` to `.gitignore`
+```
+# careerforge-backend/.gitignore
+.env
+.env.local
+uploads/
+node_modules/
+debug_resume.pdf
+output.txt
+
+# careerforge-pro/.gitignore
+.env
+.env.local
+.env.production
+dist/
+node_modules/
+```
+
+### 6.3 Validate ObjectId Parameters
+Prevent MongoDB injection via malformed IDs:
+```js
+const mongoose = require('mongoose');
+
+// Add to all routes with :id params
+if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+  return res.status(400).json({ error: 'Invalid ID format' });
+}
+```
+
+### 6.4 Stripe Webhook Signature Verification
+The webhook route exists but verify the signature properly:
+```js
+router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+  // Handle event
+  switch (event.type) {
+    case 'checkout.session.completed':
+      // Update user plan
+      break;
+    case 'customer.subscription.deleted':
+      // Downgrade user plan
+      break;
+  }
+  res.json({ received: true });
+});
+```
+
+### 6.5 JWT Secret Strength Check
+Add startup validation:
+```js
+// In server.js, before starting:
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be at least 32 characters');
+}
+if (!process.env.MONGODB_URI) {
+  throw new Error('MONGODB_URI is required');
+}
+```
+
+---
+
+## 7. Performance Optimizations
+
+### 7.1 Frontend Code Splitting
+```jsx
+// App.js — Lazy load pages
+import { lazy, Suspense } from 'react';
+const Home = lazy(() => import('./pages/Home'));
+const Builder = lazy(() => import('./pages/Builder'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Pricing = lazy(() => import('./pages/Pricing'));
+const CoverLetter = lazy(() => import('./pages/CoverLetter'));
+
+// Wrap Routes:
+<Suspense fallback={<div style={{height:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}>Loading...</div>}>
+  <Routes>...</Routes>
+</Suspense>
+```
+
+### 7.2 Memoize Expensive Calculations
+```jsx
+// In Dashboard.jsx and Builder.jsx
+import { useMemo } from 'react';
+const sortedResumes = useMemo(() => [...resumes].sort((a, b) => b.updatedAt - a.updatedAt), [resumes]);
+```
+
+### 7.3 Debounce API Calls in ResumeForm
+```js
+// Install: npm install lodash.debounce
+import debounce from 'lodash.debounce';
+const debouncedATSCheck = useCallback(debounce(async (data, keywords) => {
+  const result = await getATSScore(data, keywords);
+  dispatch(setATSScore(result.data.score));
+}, 800), []);
+```
+
+### 7.4 Gemini API Response Caching
+For identical JD → keyword extraction requests, cache results:
+```js
+// In geminiService.js
+const cache = new Map();
+async function extractKeywords(jobDescription) {
+  const key = Buffer.from(jobDescription).toString('base64').slice(0, 64);
+  if (cache.has(key)) return cache.get(key);
+  const result = await getModel().generateContent(prompt);
+  cache.set(key, result);
+  setTimeout(() => cache.delete(key), 30 * 60 * 1000); // 30-min TTL
+  return result;
+}
+```
+
+### 7.5 Add `compression` Middleware
+```bash
+npm install compression
+```
+```js
+const compression = require('compression');
+app.use(compression());
+```
+
+---
+
+## 8. SEO / Accessibility Improvements
+
+### 8.1 Update `public/index.html` (Vite)
+```html
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="CareerForge Pro — AI-powered resume builder with ATS optimization. Build your perfect resume and land more interviews." />
+  <meta name="keywords" content="resume builder, ATS resume, AI resume, career tools, job application" />
+  <meta property="og:title" content="CareerForge Pro – AI Resume Builder" />
+  <meta property="og:description" content="Build an ATS-optimized resume with AI assistance. Get more interviews." />
+  <meta property="og:image" content="/og-image.png" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <title>CareerForge Pro — AI Resume Builder & ATS Optimizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+</head>
+```
+
+### 8.2 Add ARIA Labels to Interactive Elements
+```jsx
+// UploadCard button:
+<button aria-label="Upload resume from device" ...>
+
+// Navbar hamburger:
+<button aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} ...>
+
+// ATSScoreRing:
+<div role="progressbar" aria-valuenow={score} aria-valuemin={0} aria-valuemax={100} aria-label={`ATS Score: ${score}%`}>
+```
+
+### 8.3 Keyboard Navigation
+Ensure all interactive elements are keyboard-focusable:
+```css
+/* Add to index.css */
+:focus-visible {
+  outline: 2px solid var(--cf-accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+```
+
+---
+
+## 9. Deployment Guide
+
+### 9.1 Recommended Architecture
+```
+Frontend → Vercel (free)
+Backend  → Railway ($5/mo)
+Database → MongoDB Atlas (free tier / M10 for prod)
+Files    → Cloudinary or AWS S3 (if needed)
+```
+
+### 9.2 Backend — Railway Deployment
+
+1. **Create Railway project** at railway.app
+2. **Connect GitHub repo** (backend folder)
+3. **Set environment variables** in Railway dashboard:
+```
+NODE_ENV=production
+PORT=5001
+MONGODB_URI=mongodb+srv://...
+JWT_SECRET=<64-char random string>
+JWT_REFRESH_SECRET=<64-char random string>
+GEMINI_API_KEY=...
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+FRONTEND_URL=https://your-app.vercel.app
+```
+
+4. **Railway start command:** `node server.js`
+5. **Add Nixpack config** for Puppeteer:
+```toml
+# railway.toml
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "node server.js"
+
+[[deploy.env]]
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "false"
+```
+
+### 9.3 Frontend — Vercel Deployment
+
+1. **Import project** at vercel.com (select `careerforge-pro` folder)
+2. **Framework:** Vite
+3. **Build command:** `npm run build`
+4. **Output directory:** `dist`
+5. **Environment variables:**
+```
+VITE_BACKEND_URL=https://your-backend.up.railway.app
+VITE_GOOGLE_CLIENT_ID=...
+```
+
+6. **The `vercel.json`** already handles SPA routing — keep it as-is.
+
+### 9.4 MongoDB Atlas Setup
+
+1. Create a free M0 cluster at mongodb.com/cloud/atlas
+2. Add a database user with strong password
+3. Whitelist `0.0.0.0/0` for Railway (or get Railway's IP range)
+4. Get connection string: `mongodb+srv://user:pass@cluster.mongodb.net/careerforge?retryWrites=true&w=majority`
+
+### 9.5 Stripe Webhook Setup
+
+After Railway deployment:
+1. Go to Stripe Dashboard → Webhooks
+2. Add endpoint: `https://your-backend.up.railway.app/api/payment/webhook`
+3. Select events: `checkout.session.completed`, `customer.subscription.deleted`, `customer.subscription.updated`
+4. Copy `Signing secret` → add as `STRIPE_WEBHOOK_SECRET` in Railway
+
+### 9.6 GitHub Actions CI/CD
+The existing `.github/workflows/ci.yml` needs updating:
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./careerforge-pro
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: npm run build
+
+  lint-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./careerforge-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+```
+
+---
+
+## 10. Complete `.env` Templates
+
+### Backend `.env`
+```env
+# Server
+NODE_ENV=development
+PORT=5001
+
+# Database
+MONGODB_URI=mongodb://localhost:27017/careerforge
+
+# Auth
+JWT_SECRET=your-super-secret-jwt-key-at-least-64-characters-long-please
+JWT_REFRESH_SECRET=your-refresh-secret-also-64-chars-minimum-please-ok
+
+# AI
+GEMINI_API_KEY=your_gemini_api_key
+
+# Stripe
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# URLs
+FRONTEND_URL=http://localhost:3000
+
+# Google OAuth
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+```
+
+### Frontend `.env`
+```env
+VITE_BACKEND_URL=http://localhost:5001
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+```
+
+---
+
+## 11. Design — Matching the Reference (Resuify Style)
+
+### Key Visual Differences (Current vs Reference)
+
+| Element | Current | Reference (Target) |
+|---|---|---|
+| Background | Solid `#4a9ff5` blue | Clean off-white `#f9f9f7` |
+| Hero layout | Blue bg, two-col | White bg, hero with resume mockup |
+| Primary color | Indigo `#5b6cf7` | Forest green `#2d4a2d` / olive |
+| Logo style | "CF" monogram | Single letter "R" in dark circle |
+| Company logos | Icon + text | Clean text-only logowall |
+| Template carousel | Not implemented | Horizontal scrolling cards |
+| CTA section | Gradient | Dark olive rounded card |
+| Font | Inter (generic) | Clean sans, possibly DM Sans |
+
+### Hero Section Update (Match Reference)
+The reference shows a resume editor mockup in the hero (not an upload card). Consider showing both — upload card for returning users + a static resume preview for first-timers.
+
+### Colors — Updated Design System
+```css
+:root {
+  /* Match reference's earthy green palette */
+  --cf-primary: #2c3e2d;
+  --cf-primary-light: #3d5a3e;
+  --cf-accent: #4a7c4e;
+  --cf-accent-warm: #e8a87c;  /* Warm terracotta accent */
+
+  /* Backgrounds */
+  --cf-bg: #f8f7f4;           /* Warm white */
+  --cf-bg-dark: #2c3e2d;      /* Dark section bg */
+
+  /* Typography */
+  --cf-font-heading: 'DM Sans', system-ui, sans-serif;  /* More distinctive than Inter */
+  --cf-font-body: 'DM Sans', system-ui, sans-serif;
+}
+```
+
+Add DM Sans to `index.html`:
+```html
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+```
+
+---
+
+## 12. Priority Implementation Order
+
+### Phase 1 — Critical (Do First, App is Broken Without These)
+1. ✅ Fix CRA vs Vite conflict — choose Vite, remove react-scripts
+2. ✅ Fix env variable naming (`VITE_BACKEND_URL`)
+3. ✅ Remove debug `writeFileSync` from production code
+4. ✅ Fix Stripe price amounts (multiply by 100)
+5. ✅ Remove duplicate cover-letter route in `routes/ai.js`
+6. ✅ Delete 30+ stray root-level stub files
+7. ✅ Remove duplicate `index.js` server
+
+### Phase 2 — Security (Do Before Any Production Traffic)
+8. ✅ Add rate limiting
+9. ✅ Add input validation
+10. ✅ Add global error handler
+11. ✅ Fix multer to use memory storage
+12. ✅ Add Stripe webhook signature verification
+13. ✅ Use `crypto.randomBytes` for Google OAuth temp password
+14. ✅ Add ObjectId validation in routes
+15. ✅ Add startup env variable validation
+
+### Phase 3 — Quality (Do Before Launch)
+16. ✅ Fix background color — remove blue from body
+17. ✅ Add 404 page
+18. ✅ Add PaymentSuccess route
+19. ✅ Add mobile responsive fixes
+20. ✅ Add lazy loading / code splitting
+21. ✅ Add ARIA labels
+22. ✅ Add mongoose indexes
+
+### Phase 4 — Polish (Post-Launch)
+23. Implement refresh token flow
+24. Add Cloudinary for avatar/profile photo uploads
+25. Add email verification on signup
+26. Implement full template carousel (5 templates)
+27. Add PDF watermark for free plan
+28. Add analytics (PostHog or Plausible)
+
+---
+
+## 13. Folder Structure — Final Recommended Layout
+
+```
+careerforge/
+├── careerforge-backend/
+│   ├── config/
+│   │   └── db.js
+│   ├── controllers/
+│   │   ├── aiController.js      ← Move logic from routes/ai.js
+│   │   ├── authController.js    ← Move logic from routes/auth.js
+│   │   ├── resumeController.js  ← Move logic from routes/resume.js
+│   │   └── paymentController.js ← Move logic from routes/payment.js
+│   ├── middleware/
+│   │   ├── authMiddleware.js
+│   │   ├── errorHandler.js      ← NEW
+│   │   ├── rateLimiter.js       ← NEW
+│   │   └── validate.js          ← NEW
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── Resume.js
+│   │   └── CoverLetter.js
+│   ├── routes/
+│   │   ├── ai.js
+│   │   ├── auth.js
+│   │   ├── coverletter.js
+│   │   ├── payment.js
+│   │   ├── resume.js
+│   │   └── upload.js
+│   ├── services/
+│   │   ├── geminiService.js
+│   │   ├── puppeteerService.js
+│   │   └── stripeService.js
+│   ├── .env                     ← Never commit
+│   ├── .env.example             ← Commit this
+│   ├── .gitignore
+│   ├── package.json
+│   ├── server.js
+│   └── vercel.json
+│
+└── careerforge-pro/
+    ├── public/
+    │   ├── favicon.ico
+    │   └── og-image.png         ← NEW for social sharing
+    ├── src/
+    │   ├── components/
+    │   │   ├── Auth/
+    │   │   │   ├── Login.jsx
+    │   │   │   └── Signup.jsx
+    │   │   ├── Resume/
+    │   │   │   ├── ResumeForm.jsx
+    │   │   │   └── ResumePreview.jsx
+    │   │   └── Shared/
+    │   │       ├── ATSScoreBar.jsx
+    │   │       ├── KeywordChip.jsx
+    │   │       ├── Loader.jsx
+    │   │       ├── Navbar.jsx
+    │   │       └── ProtectedRoute.jsx
+    │   ├── context/
+    │   │   └── AuthContext.jsx
+    │   ├── pages/
+    │   │   ├── Builder.jsx
+    │   │   ├── CoverLetter.jsx
+    │   │   ├── Dashboard.jsx
+    │   │   ├── Home.jsx
+    │   │   ├── NotFound.jsx     ← NEW
+    │   │   ├── PaymentSuccess.jsx ← NEW (properly implemented)
+    │   │   └── Pricing.jsx
+    │   ├── redux/
+    │   │   ├── resumeSlice.js
+    │   │   ├── store.js
+    │   │   └── userSlice.js
+    │   ├── styles/
+    │   │   └── index.css        ← Global tokens
+    │   ├── utils/
+    │   │   ├── api.js
+    │   │   └── atsScorer.js
+    │   ├── App.js
+    │   └── main.jsx
+    ├── .env.example
+    ├── .gitignore
+    ├── index.html               ← Vite entry
+    ├── package.json
+    ├── vite.config.js           ← NEW
+    └── vercel.json
+```
+
+---
+
+## 14. Quick Reference — All Changes Summary
+
+| Category | Action | File(s) |
+|---|---|---|
+| **Critical Bug** | Fix CRA/Vite conflict | `package.json`, `vite.config.js` |
+| **Critical Bug** | Fix env var names | `api.js`, `AuthContext.jsx` |
+| **Critical Bug** | Remove debug writeFile | `routes/resume.js` L146 |
+| **Critical Bug** | Fix Stripe amounts ×100 | `services/stripeService.js` |
+| **Critical Bug** | Remove duplicate route | `routes/ai.js` |
+| **Cleanup** | Delete 30+ stray files | Root-level stubs |
+| **Cleanup** | Delete 4 empty components | `components/{Dashboard,Payment,Resume}/` |
+| **Cleanup** | Delete debug artifacts | `debug_resume.pdf`, `output.txt` |
+| **Cleanup** | Delete test files | `test_models.js`, `test_pdf.js` |
+| **Security** | Rate limiting | `middleware/rateLimiter.js` |
+| **Security** | Input validation | `middleware/validate.js` |
+| **Security** | Global error handler | `middleware/errorHandler.js` |
+| **Security** | Multer memory storage | `routes/upload.js` |
+| **Security** | Stripe webhook verify | `routes/payment.js` |
+| **Security** | Crypto random password | `routes/auth.js` |
+| **Security** | Add helmet | `server.js` |
+| **Performance** | Lazy load routes | `App.js` |
+| **Performance** | Add compression | `server.js` |
+| **Performance** | DB indexes | `models/Resume.js`, `models/User.js` |
+| **UI** | Fix body background | `styles/index.css` |
+| **UI** | Mobile responsive fixes | `Home.css`, `Builder.css`, `Navbar.css` |
+| **UI** | Add 404 page | `pages/NotFound.jsx` |
+| **UI** | Fix PaymentSuccess | `pages/PaymentSuccess.jsx` |
+| **SEO** | Meta tags | `index.html` |
+| **SEO** | ARIA labels | All interactive components |
+| **Deploy** | Railway backend | `railway.toml` |
+| **Deploy** | Update CI/CD | `.github/workflows/ci.yml` |
+| **Config** | `.env.example` files | Both repos |

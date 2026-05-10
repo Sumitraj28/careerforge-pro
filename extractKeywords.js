@@ -1,1 +1,0 @@
-gemini extract keywords

@@ -8,8 +8,12 @@ async function generatePDF(resumeHTML, isPro = false) {
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage'
-      ]
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-web-security',
+        '--font-render-hinting=none',
+      ],
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     })
 
     const page = await browser.newPage()
@@ -148,7 +152,15 @@ async function generateCoverLetterPDF(coverLetterText, personalInfo) {
   try {
     browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-web-security',
+        '--font-render-hinting=none',
+      ],
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });

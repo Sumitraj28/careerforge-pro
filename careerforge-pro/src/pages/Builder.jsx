@@ -45,7 +45,7 @@ export default function Builder() {
   if (loading) {
     return (
       <div className="builder-wrapper" style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}>
-         <Loader2 size={40} className="spinner" style={{animation: 'spin 1s linear infinite', color: '#8b5cf6'}} />
+         <Loader2 size={40} className="spinner" style={{animation: 'spin 1s linear infinite', color: '#2f4a34'}} />
       </div>
     );
   }

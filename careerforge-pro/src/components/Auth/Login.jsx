@@ -17,7 +17,7 @@ export default function Login() {
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      if (!process.env.REACT_APP_GOOGLE_CLIENT_ID) {
+      if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
         toast.error('Google Login needs a valid Client ID in your .env file to work.');
         return;
       }

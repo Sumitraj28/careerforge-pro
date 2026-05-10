@@ -74,24 +74,24 @@ export default function ResumePreview() {
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
           *{margin:0;padding:0;box-sizing:border-box}
-          body{font-family:'Inter',sans-serif;color:#1a1e36;font-size:11px;line-height:1.55}
+          body{font-family:'Inter',sans-serif;color:#23211d;font-size:11px;line-height:1.55}
           h1{font-size:22px;font-weight:800;letter-spacing:-0.3px;margin-bottom:2px}
           h2{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;
-             color:#0a1628;border-bottom:2px solid #5b6cf7;padding-bottom:3px;margin:14px 0 8px}
+             color:#23211d;border-bottom:2px solid #2f4a34;padding-bottom:3px;margin:14px 0 8px}
           .rp-name-block{margin-bottom:12px}
-          .rp-jobtitle{font-size:12px;color:#5b6cf7;font-weight:600;margin-top:2px}
+          .rp-jobtitle{font-size:12px;color:#9b4f38;font-weight:600;margin-top:2px}
           .rp-contact{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
-          .rp-contact__item{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#6b7194}
+          .rp-contact__item{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#625c50}
           .rp-item__row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-          .rp-item__primary{font-size:11px;font-weight:700;color:#1a1e36}
-          .rp-item__secondary{font-size:10px;color:#6b7194;font-weight:500}
-          .rp-item__dates{font-size:10px;color:#6b7194;white-space:nowrap}
+          .rp-item__primary{font-size:11px;font-weight:700;color:#23211d}
+          .rp-item__secondary{font-size:10px;color:#625c50;font-weight:500}
+          .rp-item__dates{font-size:10px;color:#625c50;white-space:nowrap}
           .rp-item{margin-bottom:10px;page-break-inside:avoid}
           .rp-bullets{margin:4px 0 0 16px;padding:0;list-style:disc}
-          .rp-bullets li{font-size:10px;color:#3a4f6e;line-height:1.6;margin-bottom:2px}
+          .rp-bullets li{font-size:10px;color:#4f493f;line-height:1.6;margin-bottom:2px}
           .rp-skills__group{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
-          .rp-chip{display:inline-block;padding:2px 8px;background:rgba(91,108,247,0.08);
-                   border-radius:50px;font-size:10px;font-weight:600;color:#5b6cf7}
+          .rp-chip{display:inline-block;padding:2px 8px;background:rgba(47,74,52,0.09);
+                   border-radius:50px;font-size:10px;font-weight:600;color:#2f4a34}
           .rp-section{margin-bottom:14px;page-break-inside:avoid}
         </style></head><body>${clone.innerHTML}</body></html>`;
 
