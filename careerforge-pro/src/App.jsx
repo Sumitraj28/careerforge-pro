@@ -20,7 +20,7 @@ const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'));
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Navbar />
         <Toaster
           position="top-right"

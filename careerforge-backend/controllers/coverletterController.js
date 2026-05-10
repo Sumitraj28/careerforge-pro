@@ -14,7 +14,7 @@ const getAllCoverLetters = async (req, res) => {
 const saveCoverLetter = async (req, res) => {
   try {
     const { companyName, coverLetterText, jobDescription } = req.body;
-    
+
     if (!coverLetterText) {
       return res.status(400).json({ error: 'coverLetterText is required' });
     }

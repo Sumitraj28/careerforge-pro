@@ -4,13 +4,16 @@
   "private": true,
   "description": "CareerForge Pro — Full Stack Resume Builder",
   "scripts": {
+    "star": "node -e \"console.error('\\n  Typo: the command is npm run start (letter t before the r).\\n'); process.exit(1)\"",
     "start": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"cyan,magenta\" \"npm run start:backend\" \"npm run start:frontend\"",
-    "start:frontend": "cd careerforge-pro && npm start",
+    "start:frontend": "cd careerforge-pro && npm run dev",
     "start:backend": "cd careerforge-backend && npm run dev",
+    "start:backend:memory": "cd careerforge-backend && cross-env USE_MONGO_MEMORY_SERVER=true npm run dev",
     "install:all": "cd careerforge-backend && npm install && cd ../careerforge-pro && npm install",
     "build": "cd careerforge-pro && npm run build"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3"
   }
 }

@@ -133,7 +133,8 @@ export default function Dashboard() {
 
   const isFree = !isPro;
   const resumesUsed = totalResumes;
-  const resumesLimit = 1;
+  const resumesLimit = 5;
+  const coverLettersLimit = 1;
 
   /* ── Handlers ── */
   const openDeleteModal = (resume) =>
@@ -485,7 +486,7 @@ export default function Dashboard() {
                     className="dash-empty__btn"
                     style={{ background: '#2f4a34', color: '#fffaf0', border: 'none' }}
                     onClick={() => {
-                      if (isFree) setUpgradeModal(true);
+                      if (isFree && coverLetters.length >= coverLettersLimit) setUpgradeModal(true);
                       else navigate('/cover-letter');
                     }}
                   >
@@ -606,7 +607,7 @@ export default function Dashboard() {
             </div>
             <h3 className="dash-modal__title">Free Plan Limit Reached</h3>
             <p className="dash-modal__desc">
-              You have reached your free limit of <strong>1 resume</strong>.
+              You have reached your free limit (<strong>{resumesLimit} resumes</strong> and <strong>{coverLettersLimit} cover letter</strong>).
               Upgrade to Pro for unlimited resumes, premium templates, AI
               rewriting, and cover letter generation.
             </p>

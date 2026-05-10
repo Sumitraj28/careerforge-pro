@@ -11,7 +11,6 @@ const userSchema = new mongoose.Schema({
   resumeCount: { type: Number, default: 0 },
 }, { timestamps: true });
 
-userSchema.index({ email: 1 });
 userSchema.index({ stripeCustomerId: 1 });
 
 // Hash password before saving

@@ -35,8 +35,8 @@ const saveResume = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    if (user.plan === 'free' && user.resumeCount >= 1) {
-      return res.status(403).json({ error: 'Free limit reached' });
+    if (user.plan === 'free' && user.resumeCount >= 5) {
+      return res.status(403).json({ error: 'Free limit reached (max 5 resumes). Upgrade to Pro for unlimited storage.' });
     }
 
     const newResume = await Resume.create({

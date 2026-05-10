@@ -14,6 +14,6 @@ exports.aiLimiter = rateLimit({
 
 exports.authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10, // Strict limit for login/register
+  max: 100, // Increased for easier testing
   message: { error: 'Too many auth attempts. Please try again later.' }
 });

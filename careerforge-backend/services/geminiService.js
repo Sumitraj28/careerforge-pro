@@ -8,7 +8,7 @@ function getModel() {
   if (!_model) {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     _model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       generationConfig: { temperature: 0.4, maxOutputTokens: 4096 },
     });
   }
@@ -19,7 +19,7 @@ function getRewriteModel() {
   if (!_rewriteModel) {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     _rewriteModel = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       generationConfig: { temperature: 0.6, maxOutputTokens: 6144 },
     });
   }
@@ -88,6 +88,7 @@ ${jobDescription}`;
     let jsonStr = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
     const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error('Gemini extractKeywords - No JSON found:', text.substring(0, 500));
       throw new Error('AI did not return valid JSON');
     }
     jsonStr = jsonMatch[0];
@@ -228,10 +229,17 @@ Return plain text cover letter only.`;
 }
 
 async function parseResume(pdfText) {
-  const prompt = `You are an expert resume parser.
-Extract the structured data from the following resume text.
+  const prompt = `You are a world-class resume parsing AI. 
+Extract all information from the following resume text and organize it into the specified JSON format.
 
-Return ONLY a valid JSON object in this exact format, no markdown, no extra text:
+CRITICAL RULES:
+1. Return ONLY the JSON object. No markdown, no conversational text.
+2. If a piece of info is missing, use an empty string "" or empty array [].
+3. For "experience" and "projects" descriptions, convert them into clean, high-impact bullet points separated by newlines (\\n).
+4. If the person's name is a single string, split it into "firstName" and "lastName".
+5. For skills, categorize them into technical (hard skills), soft (interpersonal), and tools (software/platforms).
+
+Required JSON Structure:
 {
   "personalInfo": {
     "firstName": "",
@@ -246,7 +254,6 @@ Return ONLY a valid JSON object in this exact format, no markdown, no extra text
   },
   "experience": [
     {
-      "id": "exp_1",
       "company": "",
       "position": "",
       "startDate": "",
@@ -258,7 +265,6 @@ Return ONLY a valid JSON object in this exact format, no markdown, no extra text
   ],
   "education": [
     {
-      "id": "edu_1",
       "institution": "",
       "degree": "",
       "fieldOfStudy": "",
@@ -274,32 +280,53 @@ Return ONLY a valid JSON object in this exact format, no markdown, no extra text
   },
   "projects": [
     {
-      "id": "proj_1",
       "name": "",
       "description": "",
       "techStack": "",
       "link": ""
     }
+  ],
+  "certifications": [
+    {
+      "name": "",
+      "issuer": "",
+      "date": ""
+    }
   ]
 }
-
-If a field is missing, leave it empty.
-For description in experience, keep it as a paragraph or bullet points separated by newlines.
 
 Resume Text:
 ${pdfText}`;
 
-  const result = await getModel().generateContent(prompt);
-  const text = result.response.text();
-  let jsonStr = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-  const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error('AI did not return valid JSON');
+  try {
+    const result = await getModel().generateContent(prompt);
+    const text = result.response.text();
+    
+    // Robust JSON extraction
+    let jsonStr = text;
+    // Remove markdown code fences if present
+    jsonStr = jsonStr.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+    
+    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('Gemini parseResume - No JSON object found in text:', text.substring(0, 500));
+      throw new Error('AI did not return valid JSON');
+    }
+    
+    jsonStr = jsonMatch[0];
+    const parsed = JSON.parse(jsonStr);
+    return cleanMarkdownFromObject(parsed);
+  } catch (error) {
+    console.error('parseResume Error:', error.message);
+    // Safe fallback so the UI doesn't crash with 500
+    return {
+      personalInfo: { firstName: '', lastName: '', jobTitle: '', email: '', phone: '', location: '', summary: '' },
+      experience: [],
+      education: [],
+      skills: { technical: [], soft: [], tools: [] },
+      projects: []
+    };
   }
-  jsonStr = jsonMatch[0];
-  const parsed = JSON.parse(jsonStr);
-  // Strip any markdown formatting from parsed resume fields
-  return cleanMarkdownFromObject(parsed);
 }
 
 module.exports = { extractKeywords, rewriteResume, generateCoverLetter, parseResume };

@@ -1,7 +1,8 @@
 import axios from 'axios'
+import { getBackendBaseURL } from './backendBaseURL'
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001'
+  baseURL: getBackendBaseURL(),
 })
 
 API.interceptors.request.use((config) => {
@@ -43,6 +44,9 @@ export const generateCoverLetterPDF = (coverLetterText, personalInfo) =>
 
 export const saveResume = (data) =>
   API.post('/api/resume/save', data)
+
+export const updateResume = (id, data) =>
+  API.put(`/api/resume/update/${id}`, data)
 
 export const getAllResumes = () =>
   API.get('/api/resume/all')

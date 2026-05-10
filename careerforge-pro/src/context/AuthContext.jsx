@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { setUser as setReduxUser, clearUser } from '../redux/userSlice';
 import axios from 'axios';
+import { getBackendBaseURL } from '../utils/backendBaseURL';
 
 const AuthContext = createContext();
 
@@ -12,7 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch();
 
-  const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+  const API_URL = getBackendBaseURL();
 
   // Sync user to Redux whenever it changes
   useEffect(() => {

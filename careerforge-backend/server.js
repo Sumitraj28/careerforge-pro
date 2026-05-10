@@ -8,12 +8,14 @@ const { apiLimiter, aiLimiter, authLimiter } = require('./middleware/rateLimiter
 const errorHandler = require('./middleware/errorHandler')
 
 const PORT = process.env.PORT || 5001
+const isProd = process.env.NODE_ENV === 'production'
 
 const app = express()
 
-// Security Headers
+// Security Headers (relax COOP in dev so Google OAuth popup flows work reliably)
 app.use(helmet({
-  contentSecurityPolicy: false, // Adjust if serving frontend from same origin
+  contentSecurityPolicy: false,
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
 }))
 
 // Compression
