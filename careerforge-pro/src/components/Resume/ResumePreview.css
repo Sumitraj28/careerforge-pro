@@ -6,9 +6,8 @@
 .rp {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 100%;
   background: #f4f1eb;
-  border-left: 1px solid #e5e1d8;
   position: relative;
 }
 
@@ -111,21 +110,19 @@
 
 /* ── Paper (scroll area) ── */
 .rp-paper {
-  flex: 1;
   margin: 20px auto;
-  width: 100%;
-  max-width: 760px;
-  min-height: 980px;
+  width: 210mm;
+  min-height: 297mm;
   background: #fff;
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.12);
-  padding: 48px 52px;
-  font-family: 'Inter', 'Georgia', serif;
-  font-size: 11.5px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  padding: 20mm 15mm;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
   line-height: 1.5;
   color: #1a1916;
   position: relative;
-  border-radius: 4px;
   transition: all 0.3s ease;
+  overflow: hidden;
 }
 
 .rp-paper::before {
@@ -142,12 +139,13 @@
 /* page boundary marker */
 .rp-page-boundary {
   position: absolute;
-  top: 1040px;
+  top: 297mm;
   left: 0;
   right: 0;
-  height: 1px;
+  height: 0;
   border-top: 1.5px dashed #d0cbc0;
   pointer-events: none;
+  z-index: 5;
 }
 
 .rp-page-boundary::after {
@@ -573,65 +571,85 @@
   border-color: #d0c9b8;
 }
 
-/* ── Creative ── */
 .rp-paper--creative {
-  font-family: 'Inter', sans-serif;
-  padding: 0;
   display: grid;
-  grid-template-columns: 220px 1fr;
-  min-height: 980px;
+  grid-template-columns: 75mm 1fr;
+  grid-template-rows: auto 1fr;
+  padding: 0;
+  overflow: hidden;
 }
 
 .rp-paper--creative .rp-page-boundary {
   display: none;
 }
 
-/* Creative sidebar */
+/* Creative Header */
 .rp-paper--creative .rp-name-block {
   grid-column: 1 / -1;
   background: #1e2d3d;
-  padding: 32px 36px;
+  padding: 10mm 15mm;
   margin-bottom: 0;
+  color: #fff;
+}
+
+/* Creative sidebar */
+.rp-paper--creative .rp-sidebar-content {
+  background: #f1f5f9;
+  border-right: 1px solid #e2e8f0;
+  padding: 8mm 6mm;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Sidebar Headings */
+.rp-paper--creative .rp-sidebar-content .rp-section__title {
+  font-size: 8.5px;
+  border-bottom: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+/* Main for creative */
+.rp-paper--creative .rp-main-content {
+  padding: 10mm 12mm;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: #fff;
 }
 
 .rp-paper--creative .rp-name {
   color: #ffffff;
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 28px;
+  letter-spacing: -0.5px;
 }
 
 .rp-paper--creative .rp-jobtitle {
   color: #7dd3fc;
-  font-size: 12px;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
 }
 
 .rp-paper--creative .rp-contact {
-  gap: 8px 20px;
+  margin-top: 12px;
+  gap: 8px 15px;
 }
 
 .rp-paper--creative .rp-contact__item {
-  color: #bfdbfe;
-}
-
-.rp-paper--creative .rp-divider {
-  display: none;
+  color: #cbd5e1;
 }
 
 .rp-paper--creative .rp-section__title {
-  color: #1e2d3d;
-  border-bottom-color: #1e2d3d;
+  color: #0f172a;
+  border-bottom: 2px solid #f1f5f9;
+  font-size: 10px;
 }
 
 .rp-paper--creative .rp-chip {
-  background: rgba(30, 45, 61, 0.08);
-  color: #1e2d3d;
-  border-color: rgba(30, 45, 61, 0.2);
-}
-
-/* For creative — make main content padded */
-.rp-paper--creative>.rp-section,
-.rp-paper--creative>.rp-summary {
-  padding: 0 32px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 /* ── Upgrade Modal ── */

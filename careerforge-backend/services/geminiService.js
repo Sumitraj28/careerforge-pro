@@ -8,7 +8,7 @@ function getModel() {
   if (!_model) {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     _model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       generationConfig: { temperature: 0.4, maxOutputTokens: 4096 },
     });
   }
@@ -19,13 +19,12 @@ function getRewriteModel() {
   if (!_rewriteModel) {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     _rewriteModel = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       generationConfig: { temperature: 0.6, maxOutputTokens: 6144 },
     });
   }
   return _rewriteModel;
 }
-
 
 /**
  * Strip markdown formatting from text:
@@ -85,14 +84,15 @@ ${jobDescription}`;
 
     const result = await getModel().generateContent(prompt);
     const text = result.response.text();
-    let jsonStr = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+    let jsonStr = text;
+    // Handle markdown code blocks
+    jsonStr = jsonStr.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
     const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error('Gemini extractKeywords - No JSON found:', text.substring(0, 500));
+      console.error('Gemini extractKeywords - No JSON found:', text);
       throw new Error('AI did not return valid JSON');
     }
-    jsonStr = jsonMatch[0];
-    return JSON.parse(jsonStr);
+    return JSON.parse(jsonMatch[0]);
   } catch (error) {
     console.error("Gemini failed to extract keywords, using fallback. Error:", error.message);
     // Provide a safe, intelligent fallback so the UI never crashes
@@ -138,34 +138,24 @@ ${jobDescription.slice(0, 1200)}
 
 Return the complete updated resume JSON:`;
 
-  const result = await getRewriteModel().generateContent(prompt);
-  const text = result.response.text();
-
-  // Robust JSON extraction — handle markdown fences, thinking blocks, extra text
-  let jsonStr = text;
-
-  // Remove markdown code fences
-  jsonStr = jsonStr.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-
-  // If there's a thinking block or extra text before JSON, extract the JSON object
-  const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    console.error('AI response did not contain JSON object:', text.substring(0, 500));
-    throw new Error('AI did not return valid JSON');
-  }
-  jsonStr = jsonMatch[0];
-
-  let parsed;
   try {
-    parsed = JSON.parse(jsonStr);
-  } catch (parseErr) {
-    console.error('JSON parse failed:', parseErr.message);
-    console.error('Raw AI response (first 500 chars):', text.substring(0, 500));
-    throw new Error('Failed to parse AI response as JSON');
-  }
+    const result = await getRewriteModel().generateContent(prompt);
+    const text = result.response.text();
 
-  const cleaned = cleanMarkdownFromObject(parsed);
-  return cleaned;
+    let jsonStr = text;
+    jsonStr = jsonStr.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('AI rewrite response did not contain JSON:', text);
+      throw new Error('AI did not return valid JSON');
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    return cleanMarkdownFromObject(parsed);
+  } catch (error) {
+    console.error('Rewrite error in geminiService:', error.message);
+    throw error;
+  }
 }
 
 async function generateCoverLetter(resumeData, jobDescription, keywords) {
@@ -224,7 +214,6 @@ Return plain text cover letter only.`;
 
   const result = await getModel().generateContent(prompt);
   const text = result.response.text();
-  // Strip any markdown formatting from the cover letter
   return stripMarkdown(text);
 }
 
@@ -247,62 +236,25 @@ CRITICAL RULES FOR CATEGORIZATION:
 - certifications: Include ALL certificates, achievements, awards, badges, LeetCode ratings, contest ratings, bootcamp completions, online course completions — anything the person earned
 - education: Put ALL schooling here — universities, intermediate school, matriculation, 10th/12th grade results with their percentages
 - experience: Put internships here too, not just full-time jobs
-- For any "ACHIEVEMENTS" section in the resume, map individual items to certifications array (name = achievement title, date = year if present)
 
 Required JSON Structure:
 {
   "personalInfo": {
-    "firstName": "given name only, e.g. Ravi",
-    "lastName": "family/rest of name, e.g. Kumar",
-    "jobTitle": "current target/title if present, e.g. Full Stack Developer",
+    "firstName": "given name only",
+    "lastName": "family/rest of name",
+    "jobTitle": "desired role",
     "email": "email address",
     "phone": "phone number",
-    "location": "city/state/country only, e.g. Patna, Bihar, India",
-    "linkedin": "LinkedIn URL or handle",
-    "github": "GitHub URL or handle",
-    "summary": "professional summary/objective text"
+    "location": "city, state",
+    "linkedin": "url",
+    "github": "url",
+    "summary": "summary text"
   },
-  "experience": [
-    {
-      "company": "employer or internship organization, e.g. Acme Labs",
-      "position": "job or internship title, e.g. Software Developer Intern",
-      "startDate": "start month/year or year, e.g. Jan 2024",
-      "endDate": "end month/year, year, Present, or empty",
-      "current": false,
-      "location": "work location if present",
-      "description": "role bullets separated by \\n"
-    }
-  ],
-  "education": [
-    {
-      "institution": "school/college/university name, e.g. New Patiala Central School Patna",
-      "degree": "degree/class level, e.g. B.Tech, Intermediate, Matriculation, 10th, 12th",
-      "fieldOfStudy": "major/stream if present, e.g. Computer Science, Science",
-      "startDate": "start year if present",
-      "endDate": "end year if present",
-      "gpa": "CGPA/GPA/percentage/grade, e.g. CGPA: 7.8 or 82%"
-    }
-  ],
-  "skills": {
-    "technical": ["React", "Python", "Machine Learning", "REST APIs"],
-    "soft": ["Communication", "Leadership", "Problem-Solving"],
-    "tools": ["Git", "AWS", "Docker", "Figma", "MySQL"]
-  },
-  "projects": [
-    {
-      "name": "project title only, e.g. Vendor Dashboard",
-      "description": "project bullets/features separated by \\n",
-      "techStack": "technologies used, e.g. React, Node.js, MongoDB",
-      "link": "project URL/GitHub link"
-    }
-  ],
-  "certifications": [
-    {
-      "name": "certificate, award, badge, achievement, rating, bootcamp, or course completion title",
-      "issuer": "issuing organization/platform if present, e.g. Coursera, LeetCode, Google",
-      "date": "year/date if present"
-    }
-  ]
+  "experience": [],
+  "education": [],
+  "skills": { "technical": [], "soft": [], "tools": [] },
+  "projects": [],
+  "certifications": []
 }
 
 Resume Text:
@@ -312,23 +264,18 @@ ${pdfText}`;
     const result = await getModel().generateContent(prompt);
     const text = result.response.text();
 
-    // Robust JSON extraction
     let jsonStr = text;
-    // Remove markdown code fences if present
     jsonStr = jsonStr.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-
     const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error('Gemini parseResume - No JSON object found in text:', text.substring(0, 500));
+      console.error('Gemini parseResume - No JSON object found');
       throw new Error('AI did not return valid JSON');
     }
 
-    jsonStr = jsonMatch[0];
-    const parsed = JSON.parse(jsonStr);
+    const parsed = JSON.parse(jsonMatch[0]);
     return cleanMarkdownFromObject(parsed);
   } catch (error) {
     console.error('parseResume Error:', error.message);
-    // Safe fallback so the UI doesn't crash with 500
     return {
       personalInfo: { firstName: '', lastName: '', jobTitle: '', email: '', phone: '', location: '', linkedin: '', github: '', summary: '' },
       experience: [],

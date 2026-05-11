@@ -196,6 +196,163 @@ export default function ResumePreview() {
   // A resume is empty only if it literally has NO content in any primary section
   const isEmpty = !hasName && !hasContact && !hasSummary && !hasExp && !hasEdu && !hasSkills && !hasProj && !hasCerts;
 
+  const renderSummarySection = () => hasSummary && (
+    <div className="rp-section">
+      <p className="rp-summary">{highlightText(personalInfo.summary)}</p>
+    </div>
+  );
+
+  const renderExperienceSection = () => hasExp && (
+    <div className="rp-section">
+      <h2 className="rp-section__title">Experience</h2>
+      {experience.map((exp) => {
+        if (!safeText(exp.company) && !safeText(exp.position)) return null;
+        return (
+          <div className="rp-item" key={exp.id}>
+            <div className="rp-item__row">
+              <span className="rp-item__primary">{safeText(exp.position || 'Position')}</span>
+              <span className="rp-item__dates">
+                {formatDate(exp.startDate)} — {exp.current ? 'Present' : formatDate(exp.endDate)}
+              </span>
+            </div>
+            <div className="rp-item__row">
+              <span className="rp-item__secondary">{safeText(exp.company)}</span>
+              {exp.location && <span className="rp-item__location">{safeText(exp.location)}</span>}
+            </div>
+            {exp.description && (
+              <ul className="rp-bullets">
+                {toBullets(exp.description).map((b, i) => (
+                  <li key={i}>{highlightText(b)}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderEducationSection = () => hasEdu && (
+    <div className="rp-section">
+      <h2 className="rp-section__title">Education</h2>
+      {education.map((edu) => {
+        if (!safeText(edu.institution) && !safeText(edu.degree)) return null;
+        return (
+          <div className="rp-item" key={edu.id}>
+            <div className="rp-item__row">
+              <span className="rp-item__primary">{safeText(edu.degree)} {safeText(edu.fieldOfStudy) ? `in ${safeText(edu.fieldOfStudy)}` : ''}</span>
+              <span className="rp-item__dates">{safeText(edu.startDate)} — {safeText(edu.endDate)}</span>
+            </div>
+            <div className="rp-item__row">
+              <span className="rp-item__secondary">{safeText(edu.institution)}</span>
+              {edu.gpa && <span className="rp-item__location">{safeText(edu.gpa)}</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderSkillsSection = () => hasSkills && (
+    <div className={`rp-section ${hasSkillOverflow ? 'rp-section--overflow' : ''}`}>
+      <h2 className="rp-section__title">Skills</h2>
+      {technicalSkills.length > 0 && (
+        <div className="rp-skills__row">
+          <span className="rp-skills__category">Technical</span>
+          <div className="rp-skills__group">
+            {displayedTechnicalSkills.map((skill, i) => (
+              <span key={i} className="rp-chip">{highlightText(safeText(skill))}</span>
+            ))}
+            {hiddenTechnicalSkillCount > 0 && (
+              <span className="rp-chip rp-chip--more">+{hiddenTechnicalSkillCount} more</span>
+            )}
+          </div>
+        </div>
+      )}
+      {softSkills.length > 0 && (
+        <div className="rp-skills__row">
+          <span className="rp-skills__category">Soft</span>
+          <div className="rp-skills__group">
+            {displayedSoftSkills.map((skill, i) => (
+              <span key={i} className="rp-chip rp-chip--soft">{highlightText(safeText(skill))}</span>
+            ))}
+            {hiddenSoftSkillCount > 0 && (
+              <span className="rp-chip rp-chip--more">+{hiddenSoftSkillCount} more</span>
+            )}
+          </div>
+        </div>
+      )}
+      {toolSkills.length > 0 && (
+        <div className="rp-skills__row">
+          <span className="rp-skills__category">Tools</span>
+          <div className="rp-skills__group">
+            {displayedToolSkills.map((skill, i) => (
+              <span key={i} className="rp-chip rp-chip--tools">{highlightText(safeText(skill))}</span>
+            ))}
+            {hiddenToolSkillCount > 0 && (
+              <span className="rp-chip rp-chip--more">+{hiddenToolSkillCount} more</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderProjectsSection = () => hasProj && (
+    <div className="rp-section">
+      <h2 className="rp-section__title">Projects</h2>
+      {projects.map((proj) => {
+        if (!safeText(proj.name) && !safeText(proj.description)) return null;
+        return (
+          <div className="rp-item" key={proj.id}>
+            <div className="rp-item__row">
+              <span className="rp-item__primary">{safeText(proj.name || 'Project')}</span>
+              {proj.link && (
+                <a href={proj.link} target="_blank" rel="noreferrer" className="rp-item__link">
+                  <ExternalLink size={11} /> Link
+                </a>
+              )}
+            </div>
+            {proj.techStack && (
+              <p className="rp-item__tech">{safeText(proj.techStack)}</p>
+            )}
+            {proj.description && (
+              toBullets(proj.description).length > 1 ? (
+                <ul className="rp-bullets">
+                  {toBullets(proj.description).map((b, i) => (
+                    <li key={i}>{highlightText(b)}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="rp-item__desc">{highlightText(proj.description)}</p>
+              )
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderCertificationsSection = () => hasCerts && (
+    <div className="rp-section">
+      <h2 className="rp-section__title">Certifications</h2>
+      {certifications.map((cert) => {
+        if (!safeText(cert.name) && !safeText(cert.issuer)) return null;
+        return (
+          <div className="rp-item rp-item--inline" key={cert.id}>
+            <div className="rp-item__row">
+              <span className="rp-item__primary">{safeText(cert.name)}</span>
+              <span className="rp-item__dates">{safeText(cert.date)}</span>
+            </div>
+            {cert.issuer && (
+              <p className="rp-item__secondary">{safeText(cert.issuer)}</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="rp" id="resume-preview">
 
@@ -248,209 +405,49 @@ export default function ResumePreview() {
           <>
             {/* 1 — Name / Job Title / Contact */}
             <div className="rp-name-block">
-              {hasName && (
-                <h1 className="rp-name">
-                  {safeText(personalInfo.firstName)}{personalInfo.firstName && personalInfo.lastName ? ' ' : ''}{safeText(personalInfo.lastName)}
-                </h1>
-              )}
-              {displayJobTitle && (
-                <p className="rp-jobtitle">{displayJobTitle}</p>
-              )}
+              <h1 className="rp-name">{highlightText(`${personalInfo.firstName} ${personalInfo.lastName}`)}</h1>
+              {displayJobTitle && <p className="rp-jobtitle">{highlightText(displayJobTitle)}</p>}
               <div className="rp-contact">
                 {personalInfo.email && (
-                  <span className="rp-contact__item"><Mail size={11} /> {safeText(personalInfo.email)}</span>
+                  <span className="rp-contact__item"><Mail size={10} /> {personalInfo.email}</span>
                 )}
                 {personalInfo.phone && (
-                  <span className="rp-contact__item"><Phone size={11} /> {safeText(personalInfo.phone)}</span>
+                  <span className="rp-contact__item"><Phone size={10} /> {personalInfo.phone}</span>
                 )}
                 {personalInfo.location && (
-                  <span className="rp-contact__item"><MapPin size={11} /> {safeText(personalInfo.location)}</span>
+                  <span className="rp-contact__item"><MapPin size={10} /> {personalInfo.location}</span>
                 )}
                 {personalInfo.linkedin && (
-                  <span className="rp-contact__item"><Link2 size={11} /> {safeText(personalInfo.linkedin)}</span>
-                )}
-                {personalInfo.github && (
-                  <span className="rp-contact__item"><Globe size={11} /> {safeText(personalInfo.github)}</span>
+                  <span className="rp-contact__item"><Link2 size={10} /> {personalInfo.linkedin}</span>
                 )}
               </div>
             </div>
 
-            <hr className="rp-divider" />
-
-            {/* 2 — Summary */}
-            {personalInfo.summary && (
-              <div className="rp-section">
-                <h2 className="rp-section__title">Professional Summary</h2>
-                <p className="rp-section__body rp-summary">{highlightText(personalInfo.summary)}</p>
+            {selectedTemplate === 'creative' ? (
+              <div style={{ display: 'contents' }}>
+                <div className="rp-sidebar-content">
+                  {/* Sidebar: Skills, Certs, Education */}
+                  {renderSkillsSection()}
+                  {renderCertificationsSection()}
+                  {renderEducationSection()}
+                </div>
+                <div className="rp-main-content">
+                  {/* Main: Summary, Experience, Projects */}
+                  {renderSummarySection()}
+                  {renderExperienceSection()}
+                  {renderProjectsSection()}
+                </div>
               </div>
-            )}
-
-            {/* 3 — Experience */}
-            {hasExp && (
-              <div className="rp-section">
-                <h2 className="rp-section__title">Experience</h2>
-                {experience.map((exp) => {
-                  if (!safeText(exp.company) && !safeText(exp.position) && !safeText(exp.description)) return null;
-                  const bullets = toBullets(exp.description);
-                  return (
-                    <div className="rp-item" key={exp.id}>
-                      <div className="rp-item__row">
-                        <div>
-                          <span className="rp-item__primary">{safeText(exp.company || exp.position)}</span>
-                          {exp.location && (
-                            <span className="rp-item__location"> · {safeText(exp.location)}</span>
-                          )}
-                        </div>
-                        <span className="rp-item__dates">
-                          {formatDate(exp.startDate)}
-                          {(exp.startDate && (exp.endDate || exp.current)) && ' – '}
-                          {exp.current ? 'Present' : formatDate(exp.endDate)}
-                        </span>
-                      </div>
-                      {exp.position && exp.company && (
-                        <p className="rp-item__secondary">{safeText(exp.position)}</p>
-                      )}
-                      {bullets.length > 0 && (
-                        <ul className="rp-bullets">
-                          {bullets.map((b, i) => (
-                            <li key={i}>{highlightText(b)}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* 4 — Education */}
-            {hasEdu && (
-              <div className="rp-section">
-                <h2 className="rp-section__title">Education</h2>
-                {education.map((edu) => {
-                  if (!safeText(edu.institution) && !safeText(edu.degree) && !safeText(edu.fieldOfStudy)) return null;
-                  return (
-                    <div className="rp-item" key={edu.id}>
-                      <div className="rp-item__row">
-                        <span className="rp-item__primary">{safeText(edu.institution || edu.degree)}</span>
-                        <span className="rp-item__dates">
-                          {edu.startDate}
-                          {edu.startDate && edu.endDate && ' – '}
-                          {edu.endDate}
-                        </span>
-                      </div>
-                      <p className="rp-item__secondary">
-                        {safeText(edu.degree)}
-                        {edu.fieldOfStudy && ` in ${safeText(edu.fieldOfStudy)}`}
-                        {edu.gpa && ` · GPA: ${safeText(edu.gpa)}`}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* 5 — Skills */}
-            {hasSkills && (
-              <div className={`rp-section ${hasSkillOverflow ? 'rp-section--overflow' : ''}`}>
-                <h2 className="rp-section__title">Skills</h2>
-                {technicalSkills.length > 0 && (
-                  <div className="rp-skills__row">
-                    <span className="rp-skills__category">Technical</span>
-                    <div className="rp-skills__group">
-                      {displayedTechnicalSkills.map((skill, i) => (
-                        <span key={i} className="rp-chip">{highlightText(safeText(skill))}</span>
-                      ))}
-                      {hiddenTechnicalSkillCount > 0 && (
-                        <span className="rp-chip rp-chip--more">+{hiddenTechnicalSkillCount} more</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {softSkills.length > 0 && (
-                  <div className="rp-skills__row">
-                    <span className="rp-skills__category">Soft Skills</span>
-                    <div className="rp-skills__group">
-                      {displayedSoftSkills.map((skill, i) => (
-                        <span key={i} className="rp-chip rp-chip--soft">{highlightText(safeText(skill))}</span>
-                      ))}
-                      {hiddenSoftSkillCount > 0 && (
-                        <span className="rp-chip rp-chip--more">+{hiddenSoftSkillCount} more</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {toolSkills.length > 0 && (
-                  <div className="rp-skills__row">
-                    <span className="rp-skills__category">Tools</span>
-                    <div className="rp-skills__group">
-                      {displayedToolSkills.map((skill, i) => (
-                        <span key={i} className="rp-chip rp-chip--tools">{highlightText(safeText(skill))}</span>
-                      ))}
-                      {hiddenToolSkillCount > 0 && (
-                        <span className="rp-chip rp-chip--more">+{hiddenToolSkillCount} more</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 6 — Projects */}
-            {hasProj && (
-              <div className="rp-section">
-                <h2 className="rp-section__title">Projects</h2>
-                {projects.map((proj) => {
-                  if (!safeText(proj.name) && !safeText(proj.description)) return null;
-                  return (
-                    <div className="rp-item" key={proj.id}>
-                      <div className="rp-item__row">
-                        <span className="rp-item__primary">{safeText(proj.name || 'Project')}</span>
-                        {proj.link && (
-                          <a href={proj.link} target="_blank" rel="noreferrer" className="rp-item__link">
-                            <ExternalLink size={11} /> Link
-                          </a>
-                        )}
-                      </div>
-                      {proj.techStack && (
-                        <p className="rp-item__tech">{safeText(proj.techStack)}</p>
-                      )}
-                      {proj.description && (
-                        toBullets(proj.description).length > 1 ? (
-                          <ul className="rp-bullets">
-                            {toBullets(proj.description).map((b, i) => (
-                              <li key={i}>{highlightText(b)}</li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="rp-item__desc">{highlightText(proj.description)}</p>
-                        )
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* 7 — Certifications */}
-            {hasCerts && (
-              <div className="rp-section">
-                <h2 className="rp-section__title">Certifications</h2>
-                {certifications.map((cert) => {
-                  if (!safeText(cert.name) && !safeText(cert.issuer)) return null;
-                  return (
-                    <div className="rp-item rp-item--inline" key={cert.id}>
-                      <div className="rp-item__row">
-                        <span className="rp-item__primary">{safeText(cert.name)}</span>
-                        <span className="rp-item__dates">{safeText(cert.date)}</span>
-                      </div>
-                      {cert.issuer && (
-                        <p className="rp-item__secondary">{safeText(cert.issuer)}</p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+            ) : (
+              <>
+                {renderSummarySection()}
+                <hr className="rp-divider" />
+                {renderExperienceSection()}
+                {renderEducationSection()}
+                {renderSkillsSection()}
+                {renderProjectsSection()}
+                {renderCertificationsSection()}
+              </>
             )}
           </>
         )}
