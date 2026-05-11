@@ -4,11 +4,16 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 let _model = null;
 let _rewriteModel = null;
 
+/**
+ * Robust model selection. 
+ * Tries gemini-1.5-flash first, falls back to gemini-pro if needed.
+ */
 function getModel() {
   if (!_model) {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    // Use gemini-1.5-flash (the current standard for speed/cost)
     _model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       generationConfig: { temperature: 0.4, maxOutputTokens: 4096 },
     });
   }
@@ -154,6 +159,16 @@ Return the complete updated resume JSON:`;
     return cleanMarkdownFromObject(parsed);
   } catch (error) {
     console.error('Rewrite error in geminiService:', error.message);
+    // If it's a 404, maybe the model is wrong. Try one fallback attempt with gemini-pro
+    if (error.message.includes('404') || error.message.includes('not found')) {
+       console.log('Attempting fallback to gemini-pro...');
+       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+       const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
+       const result = await fallbackModel.generateContent(prompt);
+       const text = result.response.text();
+       const jsonMatch = text.match(/\{[\s\S]*\}/);
+       if (jsonMatch) return cleanMarkdownFromObject(JSON.parse(jsonMatch[0]));
+    }
     throw error;
   }
 }
@@ -212,9 +227,19 @@ ${mergedKeywords.join(', ')}
 
 Return plain text cover letter only.`;
 
-  const result = await getModel().generateContent(prompt);
-  const text = result.response.text();
-  return stripMarkdown(text);
+  try {
+    const result = await getModel().generateContent(prompt);
+    const text = result.response.text();
+    return stripMarkdown(text);
+  } catch (error) {
+     if (error.message.includes('404') || error.message.includes('not found')) {
+       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+       const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
+       const result = await fallbackModel.generateContent(prompt);
+       return stripMarkdown(result.response.text());
+     }
+     throw error;
+  }
 }
 
 async function parseResume(pdfText) {
@@ -276,6 +301,18 @@ ${pdfText}`;
     return cleanMarkdownFromObject(parsed);
   } catch (error) {
     console.error('parseResume Error:', error.message);
+    if (error.message.includes('404') || error.message.includes('not found')) {
+       try {
+         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+         const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
+         const result = await fallbackModel.generateContent(prompt);
+         const text = result.response.text();
+         const jsonMatch = text.match(/\{[\s\S]*\}/);
+         if (jsonMatch) return cleanMarkdownFromObject(JSON.parse(jsonMatch[0]));
+       } catch (fallbackErr) {
+         console.error('Fallback parse also failed:', fallbackErr.message);
+       }
+    }
     return {
       personalInfo: { firstName: '', lastName: '', jobTitle: '', email: '', phone: '', location: '', linkedin: '', github: '', summary: '' },
       experience: [],
