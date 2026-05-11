@@ -119,8 +119,9 @@ export default function Pricing() {
       }
     } catch (err) {
       toast.dismiss('checkout-toast');
-      toast.error('Failed to start checkout process.');
-      console.error(err);
+      const errorMsg = err.response?.data?.error || 'Failed to start checkout process.';
+      toast.error(errorMsg);
+      console.error('Checkout error:', err);
     }
   };
 
