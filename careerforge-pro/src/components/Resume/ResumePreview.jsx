@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { setTemplate } from '../../redux/resumeSlice';
-import { generatePDF } from '../../utils/api';
+import html2pdf from 'html2pdf.js';
 import toast from 'react-hot-toast';
 import {
   Mail, Phone, MapPin, Link2, Globe,
@@ -94,7 +94,7 @@ export default function ResumePreview() {
     dispatch(setTemplate(t.id));
   };
 
-  /* ── PDF download ── */
+  /* ── PDF download (client-side — no server dependency) ── */
   const handleDownload = async () => {
     setDownloading(true);
     toast.loading('Generating PDF…', { id: 'pdf' });
@@ -102,58 +102,54 @@ export default function ResumePreview() {
       const paper = document.getElementById('resume-paper');
       if (!paper) throw new Error('Preview not found');
 
+      // Clone the paper so we can strip highlights without affecting the preview
       const clone = paper.cloneNode(true);
       clone.querySelectorAll('mark.rp-highlight').forEach((el) => {
         el.replaceWith(document.createTextNode(el.textContent));
       });
 
+      // Remove the page-boundary marker from the clone
+      clone.querySelectorAll('.rp-page-boundary').forEach((el) => el.remove());
+
       const name = `${personalInfo.firstName || 'Resume'}_${personalInfo.lastName || ''}`.trim();
 
-      const resumeHTML = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-          *{margin:0;padding:0;box-sizing:border-box}
-          body{font-family:'Inter',sans-serif;color:#23211d;font-size:11px;line-height:1.55;padding:32px}
-          h1{font-size:22px;font-weight:800;letter-spacing:-0.3px;margin-bottom:2px}
-          h2.rp-section__title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;
-             color:#23211d;border-bottom:2px solid #2f4a34;padding-bottom:3px;margin:14px 0 8px}
-          .rp-name-block{margin-bottom:12px}
-          .rp-jobtitle{font-size:13px;color:#9b4f38;font-weight:600;margin-top:2px}
-          .rp-contact{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
-          .rp-contact__item{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#625c50}
-          .rp-item__row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-          .rp-item__primary{font-size:11px;font-weight:700;color:#23211d}
-          .rp-item__secondary{font-size:10.5px;color:#625c50;font-weight:500;margin-top:2px}
-          .rp-item__dates{font-size:10px;color:#625c50;white-space:nowrap;flex-shrink:0}
-          .rp-item__location{font-size:10px;color:#888}
-          .rp-item{margin-bottom:10px;page-break-inside:avoid}
-          .rp-bullets{margin:5px 0 0 16px;padding:0;list-style:disc}
-          .rp-bullets li{font-size:10px;color:#4f493f;line-height:1.65;margin-bottom:2px}
-          .rp-skills__group{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
-          .rp-chip{display:inline-block;padding:2px 8px;background:rgba(47,74,52,0.09);
-                   border-radius:50px;font-size:10px;font-weight:600;color:#2f4a34}
-          .rp-chip--more{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}
-          .rp-section{margin-bottom:14px;page-break-inside:avoid;max-height:none;overflow:visible}
-          .rp-section--overflow{border:1px solid #f59e0b;border-radius:6px;padding:8px}
-          .rp-divider{border:none;border-top:1px solid #e5e1d8;margin:8px 0 12px}
-          .rp-summary{font-size:10.5px;color:#4f493f;line-height:1.65}
-          .rp-item__tech{font-size:10px;color:#888;margin-top:2px}
-          .rp-item__desc{font-size:10px;color:#4f493f;line-height:1.6;margin-top:3px}
-          .rp-item__link{font-size:10px;color:#2f4a34;text-decoration:none}
-        </style></head><body>${clone.innerHTML}</body></html>`;
+      // Add watermark for free users
+      if (!isPro) {
+        const watermark = document.createElement('div');
+        watermark.style.cssText = 'text-align:center;font-size:9px;color:#999;font-family:Arial,sans-serif;padding-top:16px;';
+        watermark.textContent = 'Created with CareerForge Pro — Free Plan';
+        clone.appendChild(watermark);
+      }
 
-      const res = await generatePDF(resumeHTML, isPro);
-      const blob = new Blob([res.data], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${name}_resume.pdf`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      // Create a wrapper for consistent styling during PDF render
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'width:210mm;background:#fff;font-family:Inter,sans-serif;';
+      wrapper.appendChild(clone);
+      document.body.appendChild(wrapper);
+
+      const opt = {
+        margin:       [0, 0, 0, 0],
+        filename:     `${name}_resume.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  {
+          scale: 2,
+          useCORS: true,
+          letterRendering: true,
+          logging: false,
+        },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
+      };
+
+      await html2pdf().set(opt).from(wrapper).save();
+
+      // Clean up the temporary wrapper
+      document.body.removeChild(wrapper);
+
       toast.dismiss('pdf');
       toast.success('Resume downloaded!');
     } catch (err) {
-      console.error(err);
+      console.error('PDF generation error:', err);
       toast.dismiss('pdf');
       toast.error('PDF generation failed. Try again.');
     } finally {

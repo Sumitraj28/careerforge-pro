@@ -13,6 +13,7 @@
     "@reduxjs/toolkit": "^2.11.2",
     "@stripe/stripe-js": "^9.3.0",
     "axios": "^1.15.2",
+    "html2pdf.js": "^0.14.0",
     "lucide-react": "^1.8.0",
     "pdfjs-dist": "^5.7.284",
     "react": "^19.0.0",
