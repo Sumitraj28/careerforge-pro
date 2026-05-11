@@ -9,6 +9,17 @@ const createSession = async (req, res) => {
       return res.status(400).json({ error: 'userId and userEmail are required' });
     }
 
+    // Validate Stripe key is present and correct type
+    const stripeKey = process.env.STRIPE_SECRET_KEY || '';
+    if (!stripeKey) {
+      console.error('STRIPE_SECRET_KEY is not set in environment variables');
+      return res.status(500).json({ error: 'Stripe is not configured. Contact support.' });
+    }
+    if (stripeKey.startsWith('rk_')) {
+      console.error('STRIPE_SECRET_KEY is a restricted key (rk_). Use a secret key (sk_test_ or sk_live_) instead.');
+      return res.status(500).json({ error: 'Stripe key misconfigured. Use sk_test_ key, not rk_test_.' });
+    }
+
     const validPlans = Object.keys(PLANS);
     const selectedPlan = validPlans.includes(plan) ? plan : 'pro';
     const selectedCycle = billingCycle === 'yearly' ? 'yearly' : 'monthly';
@@ -16,8 +27,11 @@ const createSession = async (req, res) => {
     const session = await createCheckoutSession(userId, userEmail, selectedPlan, selectedCycle);
     res.json({ url: session.url });
   } catch (error) {
-    console.error('Create checkout session error:', error);
-    res.status(500).json({ error: 'Failed to create checkout session' });
+    console.error('Create checkout session error:', error.message || error);
+    const msg = error.type === 'StripeAuthenticationError'
+      ? 'Invalid Stripe API key. Check STRIPE_SECRET_KEY on Render.'
+      : error.message || 'Failed to create checkout session';
+    res.status(500).json({ error: msg });
   }
 };
 
