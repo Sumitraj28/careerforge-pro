@@ -123,6 +123,7 @@ export default function Pricing() {
       toast.error(errorMsg);
       console.error('Checkout error:', err);
     }
+
   };
 
   return (

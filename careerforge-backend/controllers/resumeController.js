@@ -131,16 +131,14 @@ const generateResumePdf = async (req, res) => {
 
     const pdfBuffer = await generatePDF(resumeHTML, isPro === true);
 
-    require('fs').writeFileSync('debug_resume.pdf', pdfBuffer);
-
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename=resume.pdf');
     res.setHeader('Content-Length', pdfBuffer.length);
     
     res.end(pdfBuffer);
   } catch (error) {
-    console.error('Generate PDF error:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    console.error('Generate PDF error:', error.message || error);
+    res.status(500).json({ error: 'Failed to generate PDF. Puppeteer might not be configured correctly.' });
   }
 };
 
