@@ -45,32 +45,34 @@ async function createCheckoutSession(userId, userEmail, plan = 'pro', billingCyc
   const isYearly = billingCycle === 'yearly'
   const unitAmount = isYearly ? planConfig.yearly : planConfig.monthly
 
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ['card'],
-    mode: 'subscription',
-    customer_email: userEmail,
-    line_items: [
-      {
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: `${planConfig.name} ${isYearly ? '(Yearly)' : '(Monthly)'}`,
-            description: planConfig.description,
-          },
-          unit_amount: unitAmount,
-          recurring: {
-            interval: isYearly ? 'year' : 'month',
-          },
-        },
-        quantity: 1,
-      }
-    ],
-    metadata: { userId, plan },
-    success_url: process.env.FRONTEND_URL + '/payment/success',
-    cancel_url: process.env.FRONTEND_URL + '/pricing',
-  })
+    const frontendUrl = process.env.FRONTEND_URL || 'https://careerforge-pro-cv.vercel.app';
 
-  return session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'subscription',
+      customer_email: userEmail,
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `${planConfig.name} ${isYearly ? '(Yearly)' : '(Monthly)'}`,
+              description: planConfig.description,
+            },
+            unit_amount: unitAmount,
+            recurring: {
+              interval: isYearly ? 'year' : 'month',
+            },
+          },
+          quantity: 1,
+        }
+      ],
+      metadata: { userId, plan },
+      success_url: `${frontendUrl}/payment/success`,
+      cancel_url: `${frontendUrl}/pricing`,
+    });
+
+    return session;
 }
 
 /**
