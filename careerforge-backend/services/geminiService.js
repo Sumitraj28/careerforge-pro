@@ -163,7 +163,7 @@ Return the complete updated resume JSON:`;
     if (error.message.includes('404') || error.message.includes('not found')) {
        console.log('Attempting fallback to gemini-pro...');
        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-       const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
+       const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
        const result = await fallbackModel.generateContent(prompt);
        const text = result.response.text();
        const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -234,7 +234,7 @@ Return plain text cover letter only.`;
   } catch (error) {
      if (error.message.includes('404') || error.message.includes('not found')) {
        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-       const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
+       const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
        const result = await fallbackModel.generateContent(prompt);
        return stripMarkdown(result.response.text());
      }
@@ -304,7 +304,7 @@ ${pdfText}`;
     if (error.message.includes('404') || error.message.includes('not found')) {
        try {
          const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-         const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
+         const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
          const result = await fallbackModel.generateContent(prompt);
          const text = result.response.text();
          const jsonMatch = text.match(/\{[\s\S]*\}/);
