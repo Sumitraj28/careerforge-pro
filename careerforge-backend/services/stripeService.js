@@ -2,30 +2,30 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const User = require('../models/User')
 
 /**
- * Plan pricing configuration (amounts in cents — USD)
+ * Plan pricing configuration (amounts in smallest currency unit — paise for INR)
  * Matches the 3-tier pricing on the website:
- *   Base: $80/mo  |  $60/mo (yearly → $720/yr)
- *   Pro:  $120/mo |  $90/mo (yearly → $1080/yr)
- *   Enterprise: $260/mo | $200/mo (yearly → $2400/yr)
+ *   Base: ₹80/mo  |  ₹60/mo (yearly → ₹720/yr)
+ *   Pro:  ₹120/mo |  ₹90/mo (yearly → ₹1080/yr)
+ *   Enterprise: ₹260/mo | ₹200/mo (yearly → ₹2400/yr)
  */
 const PLANS = {
   base: {
     name: 'CareerForge Base',
     description: 'All limited links, analytics, chat support, optimize hashtags, unlimited users.',
-    monthly: 8000,   // $80.00
-    yearly: 72000,   // $720.00 ($60/mo equivalent)
+    monthly: 8000,   // ₹80.00
+    yearly: 72000,   // ₹720.00 (₹60/mo equivalent)
   },
   pro: {
     name: 'CareerForge Pro',
     description: 'Everything in Base plus unlimited resumes, ATS checker, cover letters, premium templates & priority support.',
-    monthly: 12000,  // $120.00
-    yearly: 108000,  // $1,080.00 ($90/mo equivalent)
+    monthly: 12000,  // ₹120.00
+    yearly: 108000,  // ₹1,080.00 (₹90/mo equivalent)
   },
   enterprise: {
     name: 'CareerForge Enterprise',
     description: 'Everything in Pro plus dedicated support, team collaboration, custom branding & API access.',
-    monthly: 26000,  // $260.00
-    yearly: 240000,  // $2,400.00 ($200/mo equivalent)
+    monthly: 26000,  // ₹260.00
+    yearly: 240000,  // ₹2,400.00 (₹200/mo equivalent)
   },
 }
 
@@ -58,7 +58,7 @@ async function createCheckoutSession(userId, userEmail, plan = 'pro', billingCyc
       line_items: [
         {
           price_data: {
-            currency: 'usd',
+            currency: 'inr',
             product_data: {
               name: `${planConfig.name} ${isYearly ? '(Yearly)' : '(Monthly)'}`,
               description: planConfig.description,
