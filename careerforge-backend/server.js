@@ -23,7 +23,10 @@ app.use(compression())
 
 // CORS Configuration
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? (process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(u => u.trim()) : [])
+  ? [
+      'https://careerforge-pro-cv.vercel.app',
+      ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(u => u.trim()) : [])
+    ]
   : ['http://localhost:3000', 'http://localhost:5173']
 
 app.use(cors({
