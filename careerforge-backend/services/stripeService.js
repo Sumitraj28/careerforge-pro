@@ -45,7 +45,11 @@ async function createCheckoutSession(userId, userEmail, plan = 'pro', billingCyc
   const isYearly = billingCycle === 'yearly'
   const unitAmount = isYearly ? planConfig.yearly : planConfig.monthly
 
-    const frontendUrl = process.env.FRONTEND_URL || 'https://careerforge-pro-cv.vercel.app';
+  let frontendUrl = 'https://careerforge-pro-cv.vercel.app';
+  if (process.env.FRONTEND_URL) {
+    const urls = process.env.FRONTEND_URL.split(',').map(u => u.trim()).filter(Boolean);
+    frontendUrl = urls.find(u => u.startsWith('https://')) || urls[0] || frontendUrl;
+  }
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
